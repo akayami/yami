@@ -1,6 +1,6 @@
 <?php
 namespace yami\Router\Route;
-use yami\Request;
+use yami\Http\Request;
 
 use yami\Router\Route;
 use yami\Router\Route\Abstr;

@@ -1,6 +1,6 @@
 <?php
 namespace yami\Router;
-use yami\Request;
+use yami\Http\Request;
 
 use yami\Singleton;
 

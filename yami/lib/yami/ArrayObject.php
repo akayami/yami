@@ -14,8 +14,15 @@ abstract class ArrayObject implements \IteratorAggregate, \ArrayAccess, \Seriali
 		}
 	}
 	
-	public function setArray(array $data) {
+	/**
+	 * 
+	 * @param array $data
+	 * @return array 
+	 */
+	public function exchangeArray(array $data) {
+		$old = $this->data;
 		$this->data = $data;
+		return $old;
 	}
 	
 	/**

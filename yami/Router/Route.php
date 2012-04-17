@@ -1,14 +1,16 @@
 <?php
 namespace yami\Router;
 
+use yami\Request;
+
 interface Route {
 	
 	/**
-	 * @param string route
+	 * @param Request route
 	 * 
 	 * @return boolean
 	 */
-	public function isValid($route);
+	public function isValid(Request	$route);
 	
 	
 	
@@ -16,4 +18,7 @@ interface Route {
 	 * @return array
 	 */
 	public function getParams();
+	
+	
+	public function handle();
 }

@@ -1,39 +1,44 @@
 <?php
 
 namespace yami\Router\Route;
+use yami\Request;
+
 use yami\Router\Route;
 
-class Regex implements Route {
+class Regex extends Abstr implements Route {
 
 	protected $regex;
 	public $matches;
-	public $controller;
-	public $action;
 	
+	/**
+	 * 
+	 * @param string $regex
+	 * @param string $controller
+	 * @param string $action
+	 */
 	public function __construct($regex, $controller, $action) {
-		$this->regex = $regex;
-		$this->controller = $controller;
-		$this->action = $action;		
+		parent::__construct($controller, $action);
+		$this->regex = $regex;	
 	}
-		
-	public function __call($method, $args) {
-		if (isset( $this->{$method}) &&  $this->{$method} instanceof \Closure ) {
-			return call_user_func_array($this->{$method},$args);
-		} else {
-			throw new \Exception('Call to undefined method:'.get_called_class().'::'.$method);
-		}		
-	}
-	
+
+	/**
+	 * (non-PHPdoc)
+	 * @see yami\Router.Route::getParams()
+	 */
 	public function getParams() {
 		return $this->matches;
 	}
 	
-	public function isValid($route) {
-		if(preg_match($this->regex, $route, $matches)) {
+	/**
+	 * (non-PHPdoc)
+	 * @see yami\Router.Route::isValid()
+	 */
+	public function isValid(Request $request) {
+		$pieces = explode('?', $request->REQUEST_URI);	
+		if(preg_match($this->regex, $pieces[0], $matches)) {
 			$this->matches = $matches;
 			return true;
 		}
  		return false;
-	}
-	
+	}		
 }

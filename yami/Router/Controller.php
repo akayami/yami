@@ -7,6 +7,8 @@ use yami\Singleton;
 class Controller extends Singleton {
 
 	public $routes;
+	public $controller;
+	public $action;
 
 	/**
 	 * 
@@ -22,16 +24,18 @@ class Controller extends Singleton {
 	
 	/**
 	 * 
-	 * @param string $path
+	 * @param Request $param
 	 */
-	public function route($path) {
+	public function route(Request $request) {
 		ksort($this->routes);
 		foreach($this->routes as $routeBlock) {
-			foreach($routeBlock as $route) {
-				if($route->isValid($path)) {
+			foreach($routeBlock as /* @var $route Route */ $route) {
+				if($route->isValid($request)) {
 					try {
-						Request::getInstance()->appendArray($route->getParams());
-						$a = new $route->controller($route->action);
+						Request::getInstance()->setURI($route->getParams());	// Reading extracted parameters
+						return $route->handle();
+						
+						$a = new $route->controller($route->action);				// Instanciating the router
 						return true;
 					} catch(\Exception $e) {
 						throw $e;

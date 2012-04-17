@@ -3,9 +3,17 @@ namespace yami;
 
 class View extends ArrayObject {
 	
-	public $filePath;
+	protected $file;
 	
 	public function __construct(array $data = array()) {
 		$this->data = $data;	
+	}
+	
+	public function render() {
+		require($this->file.'.phtml');
+	}
+	
+	public function setView($string) {
+		$this->file = $string;
 	}
 }

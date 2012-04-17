@@ -6,24 +6,31 @@ abstract class ArrayObject implements \IteratorAggregate, \ArrayAccess, \Seriali
 	protected $data = array();
 
 	
-	public function toArray() {
-		return $this->data;
+	public function toArray(array $filter = null) {
+		if(!is_null($filter)) {
+			return array_intersect_key($this->data, array_flip($filter));
+		} else {
+			return $this->data;
+		}
 	}
 	
 	public function setArray(array $data) {
 		$this->data = $data;
 	}
 	
+	/**
+	 * 
+	 * @param array $data
+	 * @param boolean $overwrite
+	 * @return static
+	 */
 	public function appendArray(array $data, $overwrite = false) {
 		if($overwrite) {
 			$this->data = array_merge($data, $this->data);
 		} else {
 			$this->data = array_merge($this->data, $data);
 		}
-	}
-	
-	public function render() {
-		require($this->filePath.'.phtml');
+		return $this;
 	}
 	
 	public function __set($key, $val) {

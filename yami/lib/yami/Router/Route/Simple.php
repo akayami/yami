@@ -18,8 +18,8 @@ class Simple extends Abstr implements Route {
 	 * (non-PHPdoc)
 	 * @see yami\Router.Route::isValid()
 	 */
-	public function isValid(Request $request) {
-		if($request->REQUEST_URI == $this->pattern) {
+	public function isValid($request) {
+		if($request == $this->pattern) {
 			return true;
 		}
 		return false;		

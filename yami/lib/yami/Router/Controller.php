@@ -1,14 +1,17 @@
 <?php
 namespace yami\Router;
-use yami\Http\Request;
-
 use yami\Singleton;
+use yami\Http\Request;
 
 class Controller extends Singleton {
 
 	public $routes;
-	public $controller;
-	public $action;
+	
+	/**
+	 * 
+	 * @var Route
+	 */
+	public $route;
 
 	/**
 	 * 
@@ -24,26 +27,24 @@ class Controller extends Singleton {
 	
 	/**
 	 * 
-	 * @param Request $param
+	 * @param string $request
 	 */
-	public function route(Request $request) {
+	public function route($request) {
 		ksort($this->routes);
 		foreach($this->routes as $routeBlock) {
 			foreach($routeBlock as /* @var $route Route */ $route) {
 				if($route->isValid($request)) {
 					try {
 						Request::getInstance()->setURI($route->getParams());	// Reading extracted parameters
-						return $route->handle();
-						
-						$a = new $route->controller($route->action);				// Instanciating the router
-						return true;
+						$this->route = $route;						
+						return $route->handle();						
 					} catch(\Exception $e) {
-						throw $e;
+						throw new Exception('Internal System Error: '.$request, 500, $e);						
 					}
 				}
 			}
 		}
-		throw new \Exception('404');
+		throw new Exception('Requested resource not found: '.$request, 404);
 	}
 	
 	/**

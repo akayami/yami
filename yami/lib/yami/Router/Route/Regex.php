@@ -33,8 +33,8 @@ class Regex extends Abstr implements Route {
 	 * (non-PHPdoc)
 	 * @see yami\Router.Route::isValid()
 	 */
-	public function isValid(Request $request) {
-		$pieces = explode('?', $request->REQUEST_URI);	
+	public function isValid($request) {
+		$pieces = explode('?', $request);	
 		if(preg_match($this->regex, $pieces[0], $matches)) {
 			$this->matches = $matches;
 			return true;

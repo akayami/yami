@@ -23,5 +23,12 @@ abstract class Abstr {
 		$a = new $this->controller($this->action);
 		return $a->{$this->action}();
 	}
+
+	public function getController() {
+		return $this->controller;
+	}
 	
+	public function getAction() {
+		return $this->action;
+	}
 }

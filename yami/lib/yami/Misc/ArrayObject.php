@@ -1,5 +1,5 @@
 <?php
-namespace yami;
+namespace yami\Misc;
 
 abstract class ArrayObject implements \IteratorAggregate, \ArrayAccess, \Serializable, \Countable {
 	

@@ -1,5 +1,5 @@
 <?php
-namespace yami;
+namespace yami\Misc;
 
 class Singleton {
 	

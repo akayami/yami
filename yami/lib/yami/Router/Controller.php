@@ -1,6 +1,6 @@
 <?php
 namespace yami\Router;
-use yami\Singleton;
+use yami\Misc\Singleton;
 use yami\Http\Request;
 
 class Controller extends Singleton {

@@ -1,7 +1,7 @@
 <?php
 namespace yami\Http;
 
-use yami\ArrayObject;
+use yami\Misc\ArrayObject;
 
 class Request extends ArrayObject {
 

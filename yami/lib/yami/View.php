@@ -7,9 +7,10 @@ class View extends ArrayObject {
 	
 	protected $action;
 	
-	public function __construct(array $data = array()) {
-		$this->data = $data;	
-	}
+ 	public function __construct(array $data = array()) {
+ 		$this->__data = $data;
+ 	}
+	
 	
 	public function render() {
 		require($this->action.'.phtml');

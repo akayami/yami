@@ -10,7 +10,7 @@ class Request extends ArrayObject {
 	protected $isUriSet = false;
 	
 	/**
-	 * @return yami\Request
+	 * @return yami\Http\Request
 	 */
 	static public function getInstance() {
 		if(!isset(static::$instance)) {
@@ -20,7 +20,7 @@ class Request extends ArrayObject {
 	}
 	
 	protected function __construct() {
-		$this->data = array_merge($_SERVER, $_POST, $_GET, $_COOKIE, $_REQUEST, $this->uri, $this->data);
+		$this->__data = array_merge($_SERVER, $_POST, $_GET, $_COOKIE, $_REQUEST, $this->uri, $this->__data);
 	}	
 	
 	public function __clone() {
@@ -55,7 +55,7 @@ class Request extends ArrayObject {
 				return isset($this->uri[$key]);
 				break;
 			default:
-				return isset($this->data[$key]);
+				return isset($this->__data[$key]);
 		}
 	}
 	
@@ -81,10 +81,10 @@ class Request extends ArrayObject {
 					return $_COOKIE[$key];
 					break;
 				case 'uri':
-					return $this->data[$key];
+					return $this->uri[$key];
 					break;
 				default:					
-					return (isset($_REQUEST[$key]) || isset($_GET[$key]) || isset($_POST[$key]) || isset($_COOKIE[$key]) || isset($this->data[$key]));
+					return (isset($_REQUEST[$key]) || isset($_GET[$key]) || isset($_POST[$key]) || isset($_COOKIE[$key]) || isset($this->__data[$key]));
 			}
 		} else {
 			return $default;
@@ -106,7 +106,7 @@ class Request extends ArrayObject {
 					throw new Exception('Cannot set uri type');	
 				} else {
 					$this->uri[$key] = $value;
-					$this->data[$key] = $value;
+					$this->__data[$key] = $value;
 				}
 				break;
 			case 'request':
@@ -118,7 +118,7 @@ class Request extends ArrayObject {
 			case 'cookie':
 				throw new Exception('Cannot set cookie type');
 			default:
-				$this->data[$key] = $value;
+				$this->__data[$key] = $value;
 		}
 	}
 	
@@ -128,6 +128,6 @@ class Request extends ArrayObject {
 		} else {
 			$this->uri = $uri;
 		}
-		$this->data = array_merge($_POST, $_GET, $_COOKIE, $_REQUEST, $this->uri, $this->data);
+		$this->__data = array_merge($_POST, $_GET, $_COOKIE, $_REQUEST, $this->uri, $this->__data);
 	}
 }

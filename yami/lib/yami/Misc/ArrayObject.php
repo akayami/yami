@@ -3,14 +3,13 @@ namespace yami\Misc;
 
 abstract class ArrayObject implements \IteratorAggregate, \ArrayAccess, \Serializable, \Countable {
 	
-	protected $data = array();
-
+	protected $__data = array();
 	
 	public function toArray(array $filter = null) {
 		if(!is_null($filter)) {
-			return array_intersect_key($this->data, array_flip($filter));
+			return array_intersect_key($this->__data, array_flip($filter));
 		} else {
-			return $this->data;
+			return $this->__data;
 		}
 	}
 	
@@ -20,8 +19,8 @@ abstract class ArrayObject implements \IteratorAggregate, \ArrayAccess, \Seriali
 	 * @return array 
 	 */
 	public function exchangeArray(array $data) {
-		$old = $this->data;
-		$this->data = $data;
+		$old = $this->__data;
+		$this->__data = $data;
 		return $old;
 	}
 	
@@ -33,9 +32,9 @@ abstract class ArrayObject implements \IteratorAggregate, \ArrayAccess, \Seriali
 	 */
 	public function appendArray(array $data, $overwrite = false) {
 		if($overwrite) {
-			$this->data = array_merge($data, $this->data);
+			$this->__data = array_merge($data, $this->__data);
 		} else {
-			$this->data = array_merge($this->data, $data);
+			$this->__data = array_merge($this->__data, $data);
 		}
 		return $this;
 	}
@@ -57,31 +56,31 @@ abstract class ArrayObject implements \IteratorAggregate, \ArrayAccess, \Seriali
 	}
 	
 	public function offsetExists($offset) {
-		return isset($this->data[$offset]);
+		return isset($this->__data[$offset]);
 	}
 	
 	public function offsetGet($offset) {
-		return $this->data[$offset];
+		return $this->__data[$offset];
 	}
 	
 	public function offsetSet($offset, $value) {
-		return $this->data[$offset] = $value;
+		return $this->__data[$offset] = $value;
 	}
 	
 	public function offsetUnset($offset) {
-		unset($this->data[$offset]);
+		unset($this->__data[$offset]);
 	}
 	
 	public function count() {
-		return count($this->data);
+		return count($this->__data);
 	}
 	
 	public function serialize() {
-		return serialize($this->data);
+		return serialize($this->__data);
 	}
 	
 	public function unserialize($serialized) {
-		$this->data = unserialize($serialized);
+		$this->__data = unserialize($serialized);
 	}
 	
 	public function getIterator() {

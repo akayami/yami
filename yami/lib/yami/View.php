@@ -1,6 +1,8 @@
 <?php
 namespace yami;
 
+use yami\Misc\ArrayObject;
+
 class View extends ArrayObject {
 	
 	protected $action;

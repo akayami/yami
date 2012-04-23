@@ -125,13 +125,12 @@ abstract class Entity extends \ArrayObject {
 	}
 	
 	/**
+	 * 
+	 * 
 	 * @return Backend
 	 */
-	protected static function provisionBackend() {
-		if(isset(static::$backendConfig)) {
-			
-		}
-		throw new Exception('You need to implement provisionBackend in your collection');
+	protected static function provisionBackend() {		
+		throw new \Exception('You need to implement provisionBackend in your collection');
 	}
 	
 	public function delete() {

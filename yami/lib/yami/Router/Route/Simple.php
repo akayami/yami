@@ -19,7 +19,8 @@ class Simple extends Abstr implements Route {
 	 * @see yami\Router.Route::isValid()
 	 */
 	public function isValid($request) {
-		if($request == $this->pattern) {
+		$pieces = explode('?', $request);
+		if($pieces[0] == $this->pattern) {
 			return true;
 		}
 		return false;		

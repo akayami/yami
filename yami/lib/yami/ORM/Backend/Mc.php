@@ -12,7 +12,7 @@ class Mc extends Backend {
 	 */
 	protected $handle;
 	
-	protected $key_concat = '_';
+	protected $key_concat = '|';
 	
 	protected $transaction = null;
 	
@@ -92,47 +92,62 @@ class Mc extends Backend {
 			return new Recordset($mcRes);
 		}
 	}
+	
+	/**
+	 * 
+	 * @param string $query
+	 * @param string $hash
+	 * @param array $tableIdMap
+	 * @param string $cluster
+	 * @param boolean $deepLookup
+	 * @throws Exception
+	 * @return Recordset
+	 */
+	private function selectRefresh($query, $hash, array $tableIdMap, $cluster = 'default', $deepLookup = false) {
+		$res = $this->childBackend->select($query, $tableIdMap, $cluster, $deepLookup = false); // Get Full Resultset from DB
+		$explodedRes = $this->explodeFromResultSet($res);
+		$sets = array();
+		$keyRecordSet = array();
+		foreach($explodedRes as $table => $data) {
+			foreach($data as $index => $row) {
+				$keyVals = array();
+				if(isset($tableIdMap[$table])) {
+					foreach($tableIdMap[$table] as $id) {
+						if(isset($row[$id])) {
+							$keyVals[] = $row[$id];
+								
+							if(!isset($keyRecordSet[$table])) {
+								$keyRecordSet[$table] = array();
+							}
+							if(!isset($keyRecordSet[$table][$index])) {
+								$keyRecordSet[$table][$index] = array();
+							}
+							$keyRecordSet[$table][$index][$id] = $row[$id];
+		
+						} else {
+							throw new Exception('Provided id '.$id.' is missing in the query output. Mismatched table structure?');
+						}
+					}
+				}
+				$sets[$this->prepareKey($keyVals, $table, (isset($tableIdMap[$table]) ? $tableIdMap[$table] : null), $cluster)] = $row;
+			}
+			$this->addRelatedSets($table, $hash);
+		}
+		foreach($tableIdMap as $table => $crap) {
+			$this->addRelatedSets($table, $hash);
+		}
+		$sets[$hash] = $keyRecordSet;
+		$this->handle->setMulti($sets);
+		print_r($res);
+		return $res;		
+	}
 		
 	protected function _select($query, array $tableIdMap, $cluster = 'default', $deepLookup = false) {
 		$hash = $this->getSelectKey($query);
 		$mcRes = $this->handle->get($hash);
 		if($this->handle->getResultCode() != \Memcached::RES_SUCCESS) {
 			if(isset($this->childBackend)) {
-				$res = $this->childBackend->select($query, $tableIdMap, $cluster, $deepLookup = false); // Get Full Resultset from DB
-				$explodedRes = $this->explodeFromResultSet($res);
-				$sets = array();
-				$keyRecordSet = array();
-				foreach($explodedRes as $table => $data) {
-					foreach($data as $index => $row) {
-						$keyVals = array();
-						if(isset($tableIdMap[$table])) {
-							foreach($tableIdMap[$table] as $id) {
-								if(isset($row[$id])) {
-									$keyVals[] = $row[$id];
-									
-									if(!isset($keyRecordSet[$table])) {
-										$keyRecordSet[$table] = array();
-									}
-									if(!isset($keyRecordSet[$table][$index])) {
-										$keyRecordSet[$table][$index] = array();
-									}
-									$keyRecordSet[$table][$index][$id] = $row[$id];
-																		
-								} else {
-									throw new Exception('Provided id '.$id.' is missing in the query output. Mismatched table structure?');
-								}
-							}	
-						}
-						$sets[$this->prepareKey($keyVals, $table, (isset($tableIdMap[$table]) ? $tableIdMap[$table] : null), $cluster)] = $row;
-					}
-					$this->addRelatedSets($table, $hash);
-				}
-				foreach($tableIdMap as $table => $crap) {
-					$this->addRelatedSets($table, $hash);
-				}
-				$sets[$hash] = $keyRecordSet;
-				$this->handle->setMulti($sets);
-				return $res;
+				return $this->selectRefresh($query, $hash, $tableIdMap, $cluster, $deepLookup);
 			} else {
 				return null;
 			}
@@ -146,14 +161,20 @@ class Mc extends Backend {
 					$mcRes[$table][$index] = $itemKey;
 				}
 			}
-			$cashed = $this->handle->getMulti($gets);
-						
-			/**
-			 * @todo Add a routine to retrive missing items from a childBackend. It is remotely possible some items could me missing.
-			 */
+			$cached = $this->handle->getMulti($gets);
+			
+			$missing = array_keys(array_diff_key(array_flip($gets), $cached));			
+			if($missing) {
+				/**
+				 * @todo Add a better way of cacheing missing items. Right now, one missing item triggers the whole query
+				 */
+				return $this->selectRefresh($query, $hash, $tableIdMap, $cluster, $deepLookup);
+				//return $this->_select($query, $tableIdMap, $cluster, true);
+			}
+			
 			foreach($mcRes as $table => $rows) {				
 				foreach($rows as $index => $row) {
-					$mcRes[$table][$index] = $cashed[$mcRes[$table][$index]];					 		
+					$mcRes[$table][$index] = $cached[$mcRes[$table][$index]];					 		
 				}
 			}
 			return $this->implodeIntoResultSet($mcRes);
@@ -395,6 +416,24 @@ class Mc extends Backend {
 			$key = array($key);
 		}
 		return $cluster.'.'.$table.'.'.implode($this->key_concat, $ids).'.'.implode($this->key_concat, $key);
+	}
+	
+	protected function disassembleKey($key) {
+		$pieces = explode('.', $key);
+		$cluster = array_shift($pieces);
+		$table = array_shift($pieces);
+		
+		$keys = array();
+		$ids = array();
+		for($i = 0; $i < count($pieces); $i++) {
+			if($i % 2 == 0) {
+				$keys[] = $pieces[$i];
+			} else {
+				$ids[] = $pieces[$i];
+			}
+		}
+		return array('cluster' => $cluster, 'table' => $table, 'keys' => $keys, 'ids' => $ids);
+		
 	}
 	
 	/**

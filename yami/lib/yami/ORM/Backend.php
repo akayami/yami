@@ -7,7 +7,7 @@ abstract class Backend {
 	/**
 	 * 
 	 * Enter description here ...
-	 * @var yami\ORM\Backend\Abstr
+	 * @var yami\ORM\Backend
 	 */
 	protected $childBackend;
 	

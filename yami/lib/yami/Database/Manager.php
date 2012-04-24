@@ -25,7 +25,7 @@ class Manager {
 	/**
 	 * Enter description here ...
 	 *
-	 * @return SPLN_Db_Manager
+	 * @return \yami\Database\Manager
 	 */
 	public static function singleton() {
 		if(!isset(static::$instance)) {

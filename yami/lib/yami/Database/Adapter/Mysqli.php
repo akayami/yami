@@ -29,7 +29,7 @@ class Mysqli extends Abstr {
 					$config = $this->config;
 					$this->__handle = new \mysqli($config['hostname'], $config['username'], $config['password'], $config['dbname'], $config['port'], $config['socket']);
 					if($this->__handle->connect_errno > 0) {
-						throw new Exception($this->__handle->connect_error, $this->__handle->connect_errno);
+						throw new \Exception($this->__handle->connect_error, $this->__handle->connect_errno);
 					}
 				}
 				return $this->__handle;
@@ -46,7 +46,7 @@ class Mysqli extends Abstr {
 		$res = $this->handle->query($query);
 		if(is_bool($res)) {
 			if($res === false) {
-				throw new Exception($this->handle->error);
+				throw new \Exception($this->handle->error);
 			}
 			return $res;
 		}

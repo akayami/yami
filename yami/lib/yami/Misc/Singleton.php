@@ -1,9 +1,7 @@
 <?php
 namespace yami\Misc;
 
-class Singleton {
-	
-	protected static $instance;
+abstract class Singleton {
 		
 	/**
 	 * @return Singleton
@@ -20,10 +18,10 @@ class Singleton {
 	}
 
 	public function __clone() {
-		throw new Exception('Cannot clone a singleton:'.get_called_class());
+		throw new \Exception('Cannot clone a singleton:'.get_called_class());
 	}
 	
 	public function __wakeup() {
-		throw new Exception('Unserializing is not allowed for singleton:'.get_called_class());
+		throw new \Exception('Unserializing is not allowed for singleton:'.get_called_class());
 	}
 }

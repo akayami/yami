@@ -13,6 +13,7 @@ abstract class Entity extends \ArrayObject {
 	protected static $ids;
 	protected static $cluster = 'default';
 	protected static $backendConfig;
+	protected static $backend = 'default';
 //	protected static $structure;
 	public $counterFields = array();
 	
@@ -129,8 +130,8 @@ abstract class Entity extends \ArrayObject {
 	 * 
 	 * @return Backend
 	 */
-	protected static function provisionBackend() {		
-		throw new \Exception('You need to implement provisionBackend in your collection');
+	protected static function provisionBackend() {
+		return \yami\ORM\Backend\Manager::getInstance()->get(static::$backend);
 	}
 	
 	public function delete() {
@@ -140,7 +141,7 @@ abstract class Entity extends \ArrayObject {
 			if(isset($this[$id])) {
 				$keys[$id] = $this[$id];
 			} else {
-				throw new Exception('Missing key :'.$id);
+				throw new \Exception('Missing key :'.$id);
 			}
 		}
 		static::getBackend()->delete($keys, $this, $this->getTableName(), $this->getIds(), $this->getCluster());
@@ -159,7 +160,7 @@ abstract class Entity extends \ArrayObject {
 			if(isset($this[$id])) {
 				$keys[$id] = $this[$id];
 			} else {
-				throw new Exception('Missing key :'.$id);
+				throw new \Exception('Missing key :'.$id);
 			}
 		}
 		return static::getBackend()->increment($data, $keys, $this, $this->getTableName(), $ids, $this->getCluster());	
@@ -197,13 +198,13 @@ abstract class Entity extends \ArrayObject {
 		try {
 			$val = static::getBackend()->get($id, static::getTableName(), static::getIds(), static::getCluster(), false); // First trying to get data from "shallow" sources
 			if(!is_array($val)) {
-				throw new Exception('Wrong data type returned');
+				throw new \Exception('Wrong data type returned');
 			}
 		} catch(Exception $e) {
 			try {
 				$val = static::getBackend()->get($id, static::getTableName(), static::getIds(), static::getCluster(), true); // If data from shallow sources is invalid, look deeper.
 			} catch (Exception $e) {
-				throw new Exception('Item not found');
+				throw new \Exception('Item not found');
 			}
 		}
 		return $val;
@@ -239,7 +240,7 @@ abstract class Entity extends \ArrayObject {
 			if(isset($this[$id])) {
 				$keys[$id] = $this[$id];
 			} else {
-				throw new Exception('Missing key :'.$id);
+				throw new \Exception('Missing key :'.$id);
 			}
 		}
 		return static::getBackend()->update($keys, $this, $this->getTableName(), $ids, $this->getCluster(), $skipMaster);
@@ -253,7 +254,7 @@ abstract class Entity extends \ArrayObject {
 				if(isset($this[$id])) {
 					$keys[$id] = $this[$id];
 				} else {
-					throw new Exception('Missing key :'.$id);
+					throw new \Exception('Missing key :'.$id);
 				}
 			}
 		}

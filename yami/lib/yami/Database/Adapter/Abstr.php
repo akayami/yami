@@ -21,7 +21,7 @@ abstract class Abstr implements Adapter {
 			$ph_name = $match[2][0];
 
 			if (! array_key_exists($ph_name, $phs))
-				throw new Exception("query contains placeholder '${ph_name}', but a value was not passed");
+				throw new \Exception("query contains placeholder '${ph_name}', but a value was not passed");
 
 			$ph_vals = array();
 			foreach (($phs[$ph_name] !== null ? (array)$phs[$ph_name] : array(null)) as $ph_val) {
@@ -31,7 +31,7 @@ abstract class Abstr implements Adapter {
 				}
 
 				if (! is_string($ph_val) && ! is_int($ph_val) && ! is_float($ph_val))
-					throw new Exception("value for placeholder '${ph_name}' must be of type '${ph_type}', got type '" . gettype($ph_val) . "'");
+					throw new \Exception("value for placeholder '${ph_name}' must be of type '${ph_type}', got type '" . gettype($ph_val) . "'");
 					
 				switch ($ph_type) {
 					case 'str':
@@ -40,14 +40,14 @@ abstract class Abstr implements Adapter {
 						
 					case 'int':
 						if (! preg_match('/^\d++\z/', $ph_val))
-							throw new Exception("value for placeholder '${ph_name}' must be of type 'int', got type '" . gettype($ph_val) . "'");
+							throw new \Exception("value for placeholder '${ph_name}' must be of type 'int', got type '" . gettype($ph_val) . "'");
 
 						$ph_vals[] = $ph_val;
 						break;
 
 					case 'dec':
 						if (! preg_match('/^(?:\d++(?:\.\d*+)?|\.\d++)\z/', $ph_val))
-							throw new Exception("value for placeholder '${ph_name}' must be of type 'dec', got type '" . gettype($ph_val) . "'");
+							throw new \Exception("value for placeholder '${ph_name}' must be of type 'dec', got type '" . gettype($ph_val) . "'");
 
 						$ph_vals[] = (float)$ph_val;
 						break;

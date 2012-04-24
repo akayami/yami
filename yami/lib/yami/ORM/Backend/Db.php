@@ -1,6 +1,8 @@
 <?php
 namespace yami\ORM\Backend;
 
+use yami\Database\Adapter;
+
 use yami\Database\Result\CommonResult;
 
 use yami\ORM\Entity;
@@ -268,7 +270,7 @@ class Db extends Backend {
 		return $subject;
 	}
 		
-	private function getIdentifierWhere(array $ids, SPLN_Db_Adapter $h) {
+	private function getIdentifierWhere(array $ids, Adapter $h) {
 		foreach($ids as $key => $id) {
 			$ids[$key] = $h->quoteIdentifier($id).'={str:'.$id.'}';
 		}
@@ -284,10 +286,10 @@ class Db extends Backend {
 		$fields = array();
 		foreach($data as $field => $amount) {
 			if(!isset($subject[$field])) {
-				throw new Exception('Invalid Field:'.$field);
+				throw new \Exception('Invalid Field:'.$field);
 			}
 			if(!is_numeric($amount)) {
-				throw new Exception('Invalid Increment Amount:'.$amount);
+				throw new \Exception('Invalid Increment Amount:'.$amount);
 			}
 			if($amount < 0) {
 				$sign = '-';

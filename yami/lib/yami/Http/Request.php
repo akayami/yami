@@ -24,11 +24,11 @@ class Request extends ArrayObject {
 	}	
 	
 	public function __clone() {
-		throw new Exception('Cannot clone a singleton:'.get_called_class());
+		throw new \Exception('Cannot clone a singleton:'.get_called_class());
 	}
 	
 	public function __wakeup() {
-		throw new Exception('Unserializing is not allowed for singleton:'.get_called_class());
+		throw new \Exception('Unserializing is not allowed for singleton:'.get_called_class());
 	}
 	
 	/**
@@ -103,20 +103,20 @@ class Request extends ArrayObject {
 		switch($source) {
 			case 'uri':
 				if(!$overwriteURIBlock) {
-					throw new Exception('Cannot set uri type');	
+					throw new \Exception('Cannot set uri type');	
 				} else {
 					$this->uri[$key] = $value;
 					$this->__data[$key] = $value;
 				}
 				break;
 			case 'request':
-				throw new Exception('Cannot set request type');				
+				throw new \Exception('Cannot set request type');				
 			case 'get':
-				throw new Exception('Cannot set get type');
+				throw new \Exception('Cannot set get type');
 			case 'post':
-				throw new Exception('Cannot set post type');
+				throw new \Exception('Cannot set post type');
 			case 'cookie':
-				throw new Exception('Cannot set cookie type');
+				throw new \Exception('Cannot set cookie type');
 			default:
 				$this->__data[$key] = $value;
 		}

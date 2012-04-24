@@ -66,7 +66,7 @@ class Result extends CommonResult {
 	 * 
 	 * Enter description here ...
 	 * @return int
-	 * @throws Exception
+	 * @throws \Exception
 	 */
 	protected function getFetchMode() {
 		switch($this->fetchMode) {
@@ -77,7 +77,7 @@ class Result extends CommonResult {
 			case 3:
 				return MYSQLI_BOTH;
 			default:
-				throw new Exception('Unsupported fetch mode'); 
+				throw new \Exception('Unsupported fetch mode'); 
 		}
 	}
 	

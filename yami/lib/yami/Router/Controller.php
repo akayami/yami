@@ -5,6 +5,9 @@ use yami\Http\Request;
 
 class Controller extends Singleton {
 
+	
+	protected static $instance;
+	
 	public $routes;
 	
 	/**
@@ -19,7 +22,7 @@ class Controller extends Singleton {
 	 * @param int $priority
 	 */
 	public function addRoute(Route $route, $priority = 0) {
-		if(isset($this->routes[$priority])) {
+		if(!isset($this->routes[$priority])) {
 			$this->routes[$priority] = array();
 		}
 		$this->routes[$priority][] = $route;
@@ -39,12 +42,12 @@ class Controller extends Singleton {
 						$this->route = $route;						
 						return $route->handle();						
 					} catch(\Exception $e) {
-						throw new Exception('Internal System Error: '.$request, 500, $e);						
+						throw new \Exception('Internal System Error: '.$request, 500, $e);						
 					}
 				}
 			}
 		}
-		throw new Exception('Requested resource not found: '.$request, 404);
+		throw new \Exception('Requested resource not found: '.$request, 404);
 	}
 	
 	/**

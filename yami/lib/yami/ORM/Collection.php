@@ -46,7 +46,7 @@ abstract class Collection extends \ArrayIterator {
 	 * @return Backend
 	 */
 	protected static function provisionBackend() {
-		throw new Exception('You need to implement provisionBackend in your collection');
+		return \yami\ORM\Backend\Manager::getInstance()->get(static::$backend);
 	}
 
 	
@@ -107,9 +107,9 @@ abstract class Collection extends \ArrayIterator {
 	 * 
 	 * @param array $data
 	 */
-	abstract public function getModel(array $data);
+	abstract public function getEntity(array $data);
 	
  	public function current() {
- 		return $this->getModel(parent::current());
+ 		return $this->getEntity(parent::current());
  	} 	
 }

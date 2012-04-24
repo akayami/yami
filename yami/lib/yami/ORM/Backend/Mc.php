@@ -42,7 +42,7 @@ class Mc extends Backend {
 		}
 		if(!is_null($this->transaction)) {
 			if(!$this->handle->setMulti($this->transaction)) {
-				throw new Exception('Failed to commit transaction to MC');
+				throw new \Exception('Failed to commit transaction to MC');
 			}
 		}
 		if(!is_null($this->d_transaction)) {
@@ -53,7 +53,7 @@ class Mc extends Backend {
 			}
 		}
 		if(isset($this->transaction_increment) && $this->incr($this->transaction_increment)) {
-			throw new Exception('Failed to transactionally push data into MC');
+			throw new \Exception('Failed to transactionally push data into MC');
 		}
 		$this->isTransaction = false;
 		unset($this->transaction);
@@ -125,7 +125,7 @@ class Mc extends Backend {
 							$keyRecordSet[$table][$index][$id] = $row[$id];
 		
 						} else {
-							throw new Exception('Provided id '.$id.' is missing in the query output. Mismatched table structure?');
+							throw new \Exception('Provided id '.$id.' is missing in the query output. Mismatched table structure?');
 						}
 					}
 				}
@@ -246,7 +246,7 @@ class Mc extends Backend {
 						$keyVals[] = $row[$table.'.'.$id];
 						$tmpVals[$table.'.'.$id] = $row[$table.'.'.$id];
 					} else {
-						throw new Exception('Expected key missing from result. Table structure/model mismatch ?');
+						throw new \Exception('Expected key missing from result. Table structure/model mismatch ?');
 					}
 				}
 			}
@@ -311,7 +311,7 @@ class Mc extends Backend {
 					//error_log($e->getMessage());
 				}
 			} else {	
-				throw new Exception('Item does not exist');
+				throw new \Exception('Item does not exist');
 			}
 		} else {
 			$hash = $this->prepareKey($key, $table, $ids, $cluster);
@@ -323,7 +323,7 @@ class Mc extends Backend {
 				if(isset($this->childBackend)) {
 					$res = $this->childBackend->get($key, $table, $ids, $cluster);
 					if($res == false) {
-						throw new Exception('Item does not exist');
+						throw new \Exception('Item does not exist');
 					}
 					try {
 						$this->mc_set_simple($key, $res, $table, $ids, $cluster);
@@ -386,7 +386,7 @@ class Mc extends Backend {
 			$res = $this->handle->delete($hash);
 			if(!$res) {
 				$error = $this->handle->getResultCode();
-				throw new Exception('Failed to delete key in MC:'.$error. ' - '.$hash);
+				throw new \Exception('Failed to delete key in MC:'.$error. ' - '.$hash);
 			}
 		}
 	}
@@ -403,7 +403,7 @@ class Mc extends Backend {
 			$res = $this->handle->set($hash, $data);
 			if(!$res) {
 				$error = $this->handle->getResultCode();
-				throw new Exception('Failed to set key in MC:'.$error. ' - '.$hash.' => '.$data);
+				throw new \Exception('Failed to set key in MC:'.$error. ' - '.$hash.' => '.$data);
 			}
 		}
 	}

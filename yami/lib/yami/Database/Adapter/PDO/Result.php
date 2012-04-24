@@ -37,7 +37,7 @@ class Result extends CommonResult {
 	
 	/**
 	 * (non-PHPdoc)
-	 * @see lib/SPLN/Db/Result/SPLN_Db_Result_Interface::fetchAll()
+	 * @see yami\Database.Result::fetchAll()
 	 */
 	public function fetchAll() {
 		$data = $this->result->fetchAll(\PDO::FETCH_ASSOC);
@@ -53,7 +53,7 @@ class Result extends CommonResult {
 	
 	/**
 	 * (non-PHPdoc)
-	 * @see lib/SPLN/Db/Result/SPLN_Db_Result_Interface::fetch()
+	 * @see yami\Database.Result::fetch()
 	 */
 	public function fetch() {
 		return $this->result->fetch(\PDO::FETCH_ASSOC);
@@ -61,15 +61,15 @@ class Result extends CommonResult {
 	
 	/**
 	 * (non-PHPdoc)
-	 * @see lib/SPLN/Db/Result/SPLN_Db_Result_Interface::length()
+	 * @see yami\Database.Result::length()
 	 */
 	public function length() {
 		return count($this->result->fetchAll(\PDO::FETCH_ASSOC));
 	}
 	
 	/**
-	 * 
-	 * Enter description here ...
+	 * (non-PHPdoc)
+	 * @see yami\Database.Result::affectedRows()
 	 */
 	public function affectedRows() {
 		return $this->result->rowCount();

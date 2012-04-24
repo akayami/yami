@@ -83,8 +83,9 @@ class Request extends ArrayObject {
 				case 'uri':
 					return $this->uri[$key];
 					break;
-				default:					
-					return (isset($_REQUEST[$key]) || isset($_GET[$key]) || isset($_POST[$key]) || isset($_COOKIE[$key]) || isset($this->__data[$key]));
+				default:
+					return $this->__data[$key];					
+					//return (isset($_REQUEST[$key]) || isset($_GET[$key]) || isset($_POST[$key]) || isset($_COOKIE[$key]) || isset($this->uri[$key])) ? $this->__data[$key] : '' ;
 			}
 		} else {
 			return $default;

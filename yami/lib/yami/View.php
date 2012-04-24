@@ -1,4 +1,5 @@
 <?php
+
 namespace yami;
 
 use yami\Misc\ArrayObject;

@@ -13,13 +13,6 @@ class View extends ArrayObject {
 	
 	
 	public function render() {	
-// 		$incPaths = explode(PATH_SEPARATOR, get_include_path());
-// 		foreach($incPaths as $path) {
-// 			$file = $path.$this->action.'.phtml';
-// 			if(($real = realpath($file)) !== false) {
-// 				require($real);
-// 			}
-// 		}
 		if(!@include($this->action.'.phtml')) {
 			throw new \Exception('Missing view:'.$this->action.'.phtml');
 		}

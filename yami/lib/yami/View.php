@@ -12,7 +12,7 @@ class View extends ArrayObject {
  	}
 	
 	
-	public function render() {	
+	public function render() {
 		if(!@include($this->action.'.phtml')) {
 			throw new \Exception('Missing view:'.$this->action.'.phtml');
 		}

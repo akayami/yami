@@ -19,7 +19,7 @@ class Controller {
 	 * 
 	 * @param string $action
 	 */
-	public function __construct($action) {
+	public function __construct($action = null) {
 		$this->action = $action;
 		$this->view = new View();
 		$this->setActionName(AppController::getInstance()->route->getAction());

@@ -42,7 +42,7 @@ class Controller extends Singleton {
 						$this->route = $route;						
 						return $route->handle();						
 					} catch(\Exception $e) {
-						throw new \Exception('Internal System Error: '.$request, 500, $e);						
+						throw new \Exception('Internal System Error: '.$request.' '.$e->getMessage(), 500, $e);						
 					}
 				}
 			}

@@ -51,14 +51,15 @@ class Auto extends Regex {
 	public function handle() {
 		$incPaths = explode(PATH_SEPARATOR, get_include_path());
 		foreach($incPaths as $path) {
-			$file = $path.DIRECTORY_SEPARATOR.str_replace('\\', DIRECTORY_SEPARATOR, $this->namespace).DIRECTORY_SEPARATOR.$this->controller.'.php';
-			if(($real = realpath($file)) !== false) {				
-				$object = $this->namespace.'\\'.$this->controller;
+			$class = $this->controller;
+			$file = $path.DIRECTORY_SEPARATOR.str_replace('\\', DIRECTORY_SEPARATOR, $this->namespace).DIRECTORY_SEPARATOR.$class.'.php';			
+			if(($real = realpath($file)) !== false) {
+				$object = $this->namespace.'\\'.$class;
 				$a = new $object($this->action);
 				if(method_exists($a, $this->action)) {
 					$result = $a->{$this->action}();
 				} else {
-					throw new \yami\Router\Exception('Not Found', 404);
+					throw new \yami\Router\Exception('Action Not Found', 404);
 				}
 				$a->render();
 				return $result;

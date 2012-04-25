@@ -39,22 +39,30 @@ class Where extends ConditionBlock {
 				return false;
 			}
 		}
+		//return $string;
 		echo $this->parsex($string);
 	}
 	
 	protected function parsex($string) {
-		$andBlock = new ConditionBlock('AND');		
+		$andBlock = new ConditionBlock('AND');				
 		$ands = preg_split('/\s+AND\s+/i', $string);
 		foreach($ands as $and) {			
-			$xors = preg_split('/\s+xor\s+/i', $and);
+			$xors = preg_split('/\s+xor\s+/i', $and);	
 			foreach($xors as $xor) {
 				$ors = preg_split('/\s+or\s+/i', $xor);
 				foreach($ors as $or) {
-					
+					echo "\n".$or;
 				}
 			}
 		}
 		print_r($ands);
+	}
+	
+	protected function splitLevel($string, $operator) {
+		$split = preg_split('/\s+'.$operator.'\s+/', $string);
+		if($count($split) > 1) {
+			
+		}
 	}
 	
 // 	protected function parse($expression, $layer = 0) {

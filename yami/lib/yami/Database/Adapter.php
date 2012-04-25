@@ -1,6 +1,8 @@
 <?php
 namespace yami\Database;
 
+use yami\Database\Result;
+
 interface Adapter {
 
 	public function __construct(array $config);
@@ -18,16 +20,16 @@ interface Adapter {
 	 * Executes a regular query
 	 *
 	 * @param $query
-	 * @return SPLN_Db_Result
+	 * @return Result
 	 */
 	public function query($query);
 
 	/**
 	 *
 	 * Enter description here ...
-	 * @param unknown_type $query
+	 * @param string $query
 	 * @param array $phs
-	 * @return SPLN_Db_Result_Interface
+	 * @return Result
 	 */
 	public function pquery($query, array $phs = null);
 

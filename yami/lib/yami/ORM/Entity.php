@@ -60,7 +60,7 @@ abstract class Entity extends \ArrayObject {
 	/**
 	 * 
 	 * Enter description here ...
-	 * @param SPLN_Backend_Recordset $recordset
+	 * @param Recordset $recordset
 	 */
 	public static function fromRecordset(Recordset $recordset) {
 		$tmp = array();
@@ -181,7 +181,7 @@ abstract class Entity extends \ArrayObject {
 	 * 
 	 * Enter description here ...
 	 * @param mixed $id
-	 * @return SPLN_Model
+	 * @return Entity
 	 */
 	
 	public static function byId($id) {

@@ -9,7 +9,7 @@ class PDO extends Abstr {
 	/**
 	 * 
 	 * Enter description here ...
-	 * @var SPLN_Db_PDO_Result
+	 * @var Result
 	 */
 	protected $lastResult;
 	
@@ -40,7 +40,7 @@ class PDO extends Abstr {
 	
 	/**
 	 * (non-PHPdoc)
-	 * @see SPLN_Db_Adapter::quote()
+	 * @see yami\Database\Adapter.Abstr::quote()
 	 */
 	public function quote($string) {
 		return $this->handle->quote($string);
@@ -48,7 +48,7 @@ class PDO extends Abstr {
 	
 	/**
 	 * (non-PHPdoc)
-	 * @see SPLN_Db_Adapter::quoteIdentifier()
+	 * @see yami\Database\Adapter.Abstr::quoteIdentifier()
 	 */
 	public function quoteIdentifier($string) {
 		return $string;
@@ -56,7 +56,7 @@ class PDO extends Abstr {
 	
 	/**
 	 * (non-PHPdoc)
-	 * @see SPLN_Db_Adapter_Interface::getLastInsertID()
+	 * @see yami\Database.Adapter::getLastInsertID()
 	 */
 	public function getLastInsertID() {
 		return $this->handle->lastInsertId();
@@ -64,7 +64,7 @@ class PDO extends Abstr {
 	
 	/**
 	 * (non-PHPdoc)
-	 * @see SPLN_Db_Adapter_Interface::affectedRows()
+	 * @see yami\Database.Adapter::affectedRows()
 	 */
 	public function affectedRows() {
 		return $this->lastResult->affectedRows();

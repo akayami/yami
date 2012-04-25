@@ -30,7 +30,9 @@ class View extends ArrayObject {
 	 */
 	public function inject($path, array $data = null) {
 		if(is_null($data)) {
-			require($path.'.phtml');
+			if(!@include($path.'.phtml')) {
+				throw new \Exception('Failed to include: '.$path.'.phtml');	
+			}
 		} else {
 			$v = new View($data);
 			$v->setActionName($path);

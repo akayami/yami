@@ -138,7 +138,6 @@ class Mc extends Backend {
 		}
 		$sets[$hash] = $keyRecordSet;
 		$this->handle->setMulti($sets);
-		print_r($res);
 		return $res;		
 	}
 		
@@ -338,9 +337,9 @@ class Mc extends Backend {
 	
 	/**
 	 * (non-PHPdoc)
-	 * @see SPLN_Backend::_update()
+	 * @see yami\ORM.Backend::_update()
 	 */
-	protected function _update($key, Entity $subject, $table, $ids, $cluster, $skipMaster = false) {
+	protected function _update($key, Entity $subject, $table, array $ids, $cluster, $skipMaster = false) {
 		$this->clearRelatedSets($table);
 		try {
 			$this->mc_set($key, $subject, $table, $ids, $cluster);
@@ -352,9 +351,9 @@ class Mc extends Backend {
 	
 	/**
 	 * (non-PHPdoc)
-	 * @see SPLN_Backend::_insert()
+	 * @see yami\ORM.Backend::_insert()
 	 */
-	protected function _insert($key, Entity $subject, $table, $ids, $cluster) {
+	protected function _insert($key, Entity $subject, $table, array $ids, $cluster) {
 		try {
 			$this->clearRelatedSets($table);
 			$this->mc_set($subject->getKeys(), $subject, $table, $ids, $cluster);
@@ -366,7 +365,7 @@ class Mc extends Backend {
 	
 	/**
 	 * (non-PHPdoc)
-	 * @see SPLN_Backend::_delete()
+	 * @see yami\ORM.Backend::_delete()
 	 */
 	protected function _delete($key, Entity $subject, $table, $ids, $cluster) {		
 		try {
@@ -438,7 +437,7 @@ class Mc extends Backend {
 	
 	/**
 	 * (non-PHPdoc)
-	 * @see SPLN_Backend::_increment()
+	 * @see yami\ORM.Backend::_increment()
 	 * @todo Implement pushing into MC. Tricky like hell
 	 */
 	protected function _increment($data, $key, Entity $subject, $table, $ids, $cluster) {

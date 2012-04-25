@@ -16,7 +16,7 @@ class Db extends Backend {
 	/**
 	 * 
 	 * Enter description here ...
-	 * @var SPLN_DB
+	 * @var Cluster
 	 */
 	private $backend;
 	private $tableName;
@@ -56,17 +56,17 @@ class Db extends Backend {
 	/**
 	 * Allows to overwrite default connection handling
 	 * 
-	 * @param SPLN_Db_Adapter $connection
-	 * @return SPLN_Backend_Db
+	 * @param Adapter $connection
+	 * @return Db
 	 */
-	public function setConnection(SPLN_Db_Adapter $connection) {
+	public function setConnection(Adapter $connection) {
 		$this->connection = $connection;
 		return $this;
 	}
 	
 	/**
 	 * Unsets default cionnection
-	 * @return SPLN_Backend_Db
+	 * @return Db
 	 */
 	public function unsetConnection() {
 		unset($this->connection);
@@ -75,7 +75,7 @@ class Db extends Backend {
 	
 	/**
 	 * Returns the connection
-	 * @return SPLN_Db_Adapter
+	 * @return Adapter
 	 */
 	public function getConnection() {
 		return $this->connection;
@@ -83,7 +83,7 @@ class Db extends Backend {
 	
 	/**
 	 * (non-PHPdoc)
-	 * @see SPLN_Backend::_select()
+	 * @see yami\ORM.Backend::_select()
 	 */
 	public function _select($query, array $tableIdMap, $cluster = 'default', $deepLookup = false) {
 		$h = (isset($this->connection) ? $this->connection : $this->connection = $this->backend->slave());
@@ -91,12 +91,21 @@ class Db extends Backend {
 		return $res;		
 	}
 	
+	/**
+	 * (non-PHPdoc)
+	 * @see yami\ORM.Backend::_query()
+	 */
 	protected function _query($query, array $tables, $cluster = 'default', $deepLookup = false) {
 		$h = (isset($this->connection) ? $this->connection : $this->connection = $this->backend->slave());
 		$res = $this->getRecordset($h->query($query));
 		return $res;
 	} 
 	
+	/**
+	 * 
+	 * @param CommonResult $result
+	 * @return Recordset
+	 */
 	public function getRecordset(CommonResult $result) {
 		$output = new Recordset();
 		$fields = $result->fields();
@@ -114,7 +123,7 @@ class Db extends Backend {
 	
 	/**
 	 * (non-PHPdoc)
-	 * @see lib/SPLN/SPLN_Backend::get()
+	 * @see yami\ORM.Backend::get()
 	 */
 	public function get($id, $table, $ids, $cluster, $deepLookup = false) {
 		if($deepLookup === true && isset($this->childBackend)) {
@@ -144,11 +153,15 @@ class Db extends Backend {
 			$res = $h->pquery($q, $aId)->fetch();
 			return $res;	
 		} catch(Exception $e) {
-			throw new SPLN_Backend_Exception('noitemfound', 'Requested item was not found', null, $e);
+			throw new Exception('noitemfound', 'Requested item was not found', null, $e);
 		}
 	}
 	
-	protected function _update($keys, Entity $subject, $table, $ids, $cluster, $skipMaster = false) {
+	/**
+	 * (non-PHPdoc)
+	 * @see yami\ORM.Backend::_update()
+	 */
+	protected function _update($keys, Entity $subject, $table, array $ids, $cluster, $skipMaster = false) {
 		/*
 		 * Filter out fields that should not be updated, such as timestamps with default values to be set by DB
 		 */
@@ -166,7 +179,7 @@ class Db extends Backend {
 		$affected = $this->dbUpdate($keys, $data, $table, $ids, $cluster, $skipMaster);
 				
 		if($affected == 0) {
-			throw new SPLN_Backend_Exception('nochanges', 'Failed to update any rows');
+			throw new Exception('nochanges', 'Failed to update any rows');
 		}
 		
 		/*
@@ -180,25 +193,24 @@ class Db extends Backend {
 	
 	/**
 	 * (non-PHPdoc)
-	 * @see SPLN_Backend::_delete()
+	 * @see yami\ORM.Backend::_delete()
 	 */
 	protected function _delete($keys, Entity $subject, $table, $ids, $cluster) {		
 		if($this->dbDelete($keys, $subject, $table, $ids, $cluster) == 0) {
-			throw new SPLN_Backend_Exception('nochanges', 'Failed to update any rows');
+			throw new Exception('nochanges', 'Failed to update any rows');
 		}
 		return $subject;
 	}
 	
 	/**
 	 * 
-	 * Enter description here ...
 	 * @param mixed $keys
 	 * @param Entity $subject
 	 * @param string $table
 	 * @param array $ids
 	 * @param string $cluster
 	 */
-	protected function dbDelete($keys, Entity $subject, $table, $ids, $cluster) {
+	protected function dbDelete($keys, Entity $subject, $table, array $ids, $cluster) {
 		$h = $this->getMasterHandle();
 		$query = "DELETE FROM ".$h->quoteIdentifier($table).' WHERE '.$this->getIdentifierWhere($ids, $h);
 		$res = $h->pquery($query, $keys);
@@ -214,8 +226,9 @@ class Db extends Backend {
 	 * @param array $ids
 	 * @param string $cluster
 	 * @param boolean $skipMaster
+	 * @return int
 	 */
-	protected function dbUpdate($keys, array $subject, $table, $ids, $cluster, $skipMaster = false) {		
+	protected function dbUpdate($keys, array $subject, $table, array $ids, $cluster, $skipMaster = false) {		
 		$h = $this->getMasterHandle();		
 		$fields = array();
 		foreach($subject as $field => $value) {
@@ -229,9 +242,9 @@ class Db extends Backend {
 	
 	/**
 	 * (non-PHPdoc)
-	 * @see SPLN_Backend::_insert()
+	 * @see yami\ORM.Backend::_insert()
 	 */
-	protected function _insert($keys, Entity $subject, $table, $ids, $cluster) {
+	protected function _insert($keys, Entity $subject, $table, array $ids, $cluster) {
 		$h = $this->getMasterHandle();
 		foreach($subject->getStructure() as $field) {
 			if($field['Type'] == 'timestamp' && $field['Default'] == 'CURRENT_TIMESTAMP') {
@@ -279,7 +292,7 @@ class Db extends Backend {
 	
 	/**
 	 * (non-PHPdoc)
-	 * @see SPLN_Backend::_increment()
+	 * @see yami\ORM.Backend::_increment()
 	 */
 	protected function _increment($data, $key, Entity $subject, $table, $ids, $cluster) {
 		$h = $this->getMasterHandle();

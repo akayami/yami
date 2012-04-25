@@ -1,5 +1,7 @@
 <?php
 namespace yami\ORM;
+use yami\ORM\Backend\Exception;
+
 use yami\ORM\Entity;
 
 abstract class Backend {
@@ -37,7 +39,7 @@ abstract class Backend {
 		if(isset($this->childBackend)) {
 			try {
 				$subject = $this->childBackend->update($key, $subject, $table, $ids, $cluster, $skipMaster);
-			} catch(SPLN_Backend_Exception $e) {
+			} catch(Exception $e) {
 				if($e->getKey() != 'nochanges') {
 					throw $e; // Catching only nochanges failuers
 				} else {
@@ -93,18 +95,6 @@ abstract class Backend {
 	/**
 	 * 
 	 * Enter description here ...
-	 * @param string $query
-	 * @param array $ids
-	 * @param array $tables
-	 * @param string $cluster
-	 * @param boolean $deepLookup
-	 * @return SPLN_Backend_Recordset
-	 */
-	//abstract public function select($query, array $ids, array $tables, $cluster = 'default', $deepLookup = false);
-	
-	/**
-	 * 
-	 * Enter description here ...
 	 * @param mixed $key
 	 * @param Entity $subject
 	 * @param string $table
@@ -113,7 +103,7 @@ abstract class Backend {
 	 * @param boolean $skipMaster
 	 * @return Entity
 	 */
-	abstract protected function _update($key, Entity $subject, $table, $ids, $cluster, $skipMaster = false);
+	abstract protected function _update($key, Entity $subject, $table, array $ids, $cluster, $skipMaster = false);
 	
 	/**
 	 * 
@@ -143,7 +133,7 @@ abstract class Backend {
 	 * @param array $ids
 	 * @param string $cluster
 	 */
-	abstract protected function _insert($key, Entity $subject, $table, $ids, $cluster);
+	abstract protected function _insert($key, Entity $subject, $table, array $ids, $cluster);
 	
 	/**
 	 * 

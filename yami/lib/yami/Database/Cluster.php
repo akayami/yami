@@ -15,7 +15,7 @@ class Cluster {
 			'dbname' => 'dbname',
 			'socket' => '',
 			'persistent' => false, 
-			'adapter' => 'SPLN_Db_Mysqli_Adapter'		
+			'adapter' => 'yami\Database\Adapter\Mysqli'		
 	);	
 	
 	/**

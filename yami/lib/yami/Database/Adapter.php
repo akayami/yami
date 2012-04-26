@@ -79,5 +79,8 @@ interface Adapter {
 	 * @return boolean
 	 */
 	public function isMaster();
+	
+	
+	public function quote($value);
 
 }

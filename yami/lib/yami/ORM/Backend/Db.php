@@ -1,6 +1,8 @@
 <?php
 namespace yami\ORM\Backend;
 
+use yami\ORM\Select;
+
 use yami\Database\Adapter;
 
 use yami\Database\Result\CommonResult;
@@ -87,8 +89,13 @@ class Db extends Backend {
 	 */
 	public function _select($query, array $tableIdMap, $cluster = 'default', $deepLookup = false) {
 		$h = (isset($this->connection) ? $this->connection : $this->connection = $this->backend->slave());
-		$res = $this->getRecordset($h->query($query));
-		return $res;		
+		if($query instanceof Select) {
+			$query->setDbAdapter($h);
+			if($query->hasPlaceholders()) {
+				return $this->getRecordset($h->query($h->pquery_sql($query, $query->getPlaceholders())));
+			}			
+		}
+		return $this->getRecordset($h->query($query));			
 	}
 	
 	/**

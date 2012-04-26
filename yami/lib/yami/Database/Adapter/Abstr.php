@@ -81,7 +81,7 @@ abstract class Abstr implements Adapter {
 		return $this->query($this->pquery_sql($query, $phs));
 	}
 	
-	abstract public function quote($string);
+//	abstract public function quote($string);
 	
 	abstract public function quoteIdentifier($string);
 	

@@ -2,133 +2,70 @@
 namespace yami\Database\Sql;
 use yami\Database\Sql\ConditionBlock;
 
-class Where extends ConditionBlock {
+class Where extends Expression {
 	
 	protected $operators = array('OR', 'XOR', 'AND');
 	
 	public function __construct($expression) {
-		echo $this->parse($expression);
+		$this->block = $this->splitLevel($expression);
+//		$this->block = $this->parse($expression);
+	}
+	
+	public function __toString() {
+		return $this->block->__toString();
 	}
 	
 	
 	protected function parse($string, $layer = 0) {
-		preg_match_all("/\((([^()]*|(?R))*)\)/",$string,$matches);
-		echo "\n{$layer}--------------\n";
-		print_r($matches);
-		if (count($matches) > 1) {
-			$match = false;
+		preg_match_all("/\((([^()]*|(?R))*)\)/",$string,$matches);	
+		print_r($matches);	
+		if (count($matches[1]) > 0) {
 			for ($i = 0; $i < count($matches[1]); $i++) {
-				$match = true;
 				if (is_string($matches[1][$i]) && (strlen($matches[1][$i]) > 0)) {
-						
-					if(($return = $this->parse($matches[1][$i], $layer + 1)) === false) {
-						echo $matches[1][$i];
-					}
-					//  					if(($return = recursiveSplit($matches[1][$i], $layer + 1)) === false) {
-					//  						return $matches[1][$i];
-					//  					} else {
-					//  						echo "\n{$layer}--------------\n";
-					//  						echo "\n{$return}\n";
-					//  						echo str_replace($return, '*', $matches[1][$i]);
-					//  					}
-				} else {
-					echo "\n{$layer}:No Matches on ".$string;
+
+					echo "\n".$matches[0][$i];
+					if(($return = $this->parse($matches[1][$i], $layer + 1)) == false) {
+						print_r($this->splitLevel($matches[1][$i]));	
+					}						
+// 					if(($return = $this->parse($matches[1][$i], $layer + 1)) === false) {
+// 						$output = $this->splitLevel($matches[1][$i]);
+// 						return array('matched' => $matches, 'parsed' => $output);
+// 					} else {
+// 						print_r($return);
+// 						$reference_rand = mt_rand(1, 10000).microtime(true); 
+// 						$ref = '[ref] = '.$reference_rand; 						
+//  						return $this->splitLevel(str_replace($return['matched'][0], $ref, $matches[1][$i]), array($ref => $return['parsed']));
+// 					}
 				}
 			}
 		} else {
-			echo "\n{$layer}:No Matches on ".$string;
-			if(!$match) {
-				return false;
-			}
+			return false;
 		}
-		//return $string;
-		print_r($this->splitLevel($string));
 	}
 	
-	
-	protected function parsex($string) {
-		$andBlock = new ConditionBlock('AND');				
-		$ands = preg_split('/\s+OR\s+/i', $string);
-		foreach($ands as $and) {			
-			$xors = preg_split('/\s+XOR\s+/i', $and);	
-			foreach($xors as $xor) {
-				$ors = preg_split('/\s+AND\s+/i', $xor);
-				
-				foreach($ors as $or) {
-					echo "\n".$or;
-				}
-			}
-		}
-		print_r($ands);
-	}
-	
-// 	protected function parse($string) {
-// 		return $this->splitLevel($string);
-// 	}
-	
-	protected function splitLevel($string, $level = 0) {
+	protected function splitLevel($string, $binding = array(), $level = 0) {
 		$operator = $this->operators[$level];		
-		$split = preg_split('/\s+'.$operator.'\s+/', $string);
-		echo "\nSplit:".count($split);
+		$split = preg_split('/\s+'.$operator.'\s+/i', $string);
 		if(count($split) > 1) {
 			$out = new ConditionBlock($operator);
-			foreach($split as $cond) {				
-				$out->add($this->splitLevel($cond, $level + 1));
+			foreach($split as $cond) {
+				if(isset($binding[$cond])) {
+					$out->add($binding[$cond]);
+				} else {
+					if(($level) < count($this->operators) - 1) {
+						$out->add($this->splitLevel($cond, $binding, $level + 1));
+					} else {
+						$out->add(new Condition($cond));
+					}
+				}
 			}
-			return $out;
 		} else {
-			return new Condition($split[0]);
+			if(($level) < count($this->operators) - 1) {
+				return $this->splitLevel($string, $binding, $level + 1);
+			} else {
+				return new Condition($string);
+			}
 		}
-	}
-	
-// 	protected function parse($expression, $layer = 0) {
-// 		if(preg_match_all("/\((([^()]*|(?R))*)\)/", $expression, $matches)) {
-// 			echo "\n{$layer}--------------\n";
-// 			print_r($matches);
-// 			if(count($matches) > 1) {
-// 				for ($i = 0; $i < count($matches[1]); $i++) {
-// 					if (is_string($matches[1][$i]) && (strlen($matches[1][$i]) > 0)) {
-// 						if(($return = $this->parse($matches[1][$i], $layer + 1)) === false) {
-// //							print_r($matches[1][$i]);
-// // 							$and = preg_split('/\s+AND\s+/i', $matches[1][$i]);
-// // 							foreach($and as $p) {
-// // 								$xor = preg_split('/\s+XOR\s+/i', $p);
-// // 								foreach($xor as $q) {
-									
-// // 									$or = preg_split('/\s+OR\s+/i', $q);
-// // 									if(count($or)) {
-// // 										$orBlock = new ConditionBlock();									
-// // 										foreach($or as $w) {
-// // 											$orBlock->add(new Condition($w));
-// // 										}
-// // 									}
-// // 								}
-// // 							}							
-// //  							if(preg_match('/(and|or)/',$matches[1][$i], $m)) {
-// //  								echo "\n---".print_r($m);exit;
-// //  							}
-// 							//$block = new ConditionBlock($matches[1][$i]);
-							
-// 							//echo $matches[1][$i];exit;
-// 							return $return;
-// 						}
-// 					}
-// 				}
-// 			} else {
-// 				return false;
-// 			}
-// 		} else {
-// 			return false;
-// 		}
-// 	}
-	
-	
-	protected function splitConditions($string, $operator = "AND") {
-		$out = preg_split('/\s+'.$operator.'\s+/i', $matches[1][$i]);
-		if(count($out) > 0) {
-			
-		} else {
-			
-		}
+		return $out;
 	}
 }

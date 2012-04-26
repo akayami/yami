@@ -8,6 +8,8 @@ abstract class Collection extends \ArrayIterator {
 	protected static $ids;
 	protected static $cluster = 'default';	
 	private $array = array();
+	
+	protected $select;
 
 	
 	public function __construct($array) {
@@ -21,6 +23,16 @@ abstract class Collection extends \ArrayIterator {
 		parent::__construct($array);
 	} 
 	
+
+	/**
+	 * 
+	 * @return \yami\ORM\Select
+	 */
+	public static function select() {
+		$select = new Select(get_called_class());
+		$select->from(static::getTableName());
+		return $select;		
+	}
 	
 	/**
 	 * Enter description here ...
@@ -70,16 +82,25 @@ abstract class Collection extends \ArrayIterator {
 		)->getArrayCopy());
 	}
 
-	public static function get($params) {
-		$q = 'SELECT * FROM '.static::getTableName();
-		if(isset($params['where'])) {
-			$q .= ' WHERE '.implode(' AND ', $params['where']);
-		}
-		if(isset($params['order'])) {
-			$q .= ' ORDER BY '.implode(', ',$params['order']);
-		}
-		if(isset($params['limit'])) {
-			$q .= ' LIMIT '.implode(', ', $params['limit']);
+	/**
+	 * 
+	 * @param mixed $params
+	 * @return \yami\ORM\Collection
+	 */
+	public static function get($params, $placeholders = array()) {
+		if($params instanceof Select) {
+			$q = $params;
+		} else {
+			$q = 'SELECT * FROM '.static::getTableName();
+			if(isset($params['where'])) {
+				$q .= ' WHERE '.implode(' AND ', $params['where']);
+			}
+			if(isset($params['order'])) {
+				$q .= ' ORDER BY '.implode(', ',$params['order']);
+			}
+			if(isset($params['limit'])) {
+				$q .= ' LIMIT '.implode(', ', $params['limit']);
+			}
 		}
 		return new static(static::getBackend()->select(
 			$q, array(static::getTableName() => static::getIds())

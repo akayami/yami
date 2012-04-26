@@ -5,7 +5,6 @@ class Table extends Expression {
 	
 	protected $table;
 	protected $alias;
-	protected $fieldEscape = '`';
 	
 	public function __construct($definition = null) {
 		$this->parse($definition);
@@ -39,6 +38,14 @@ class Table extends Expression {
 		return $this->alias;
 	}
 	
+	public function getIdentifier() {
+		if(isset($this->alias)) {
+			return $this->alias;
+		} else {
+			return $this->table;
+		}
+	}
+	
 	protected function parse($string) {
 		if(preg_match("#(?P<table>\w+)(\s+as\s+(?P<alias>\w+))?#", $string, $matches)) {
 			if(isset($matches['table']) && strlen($matches['table'])) {
@@ -53,6 +60,6 @@ class Table extends Expression {
 	}	
 	
 	public function __toString() {
-		return $this->fieldEscape.$this->table.$this->fieldEscape.(strlen($this->alias) ? ' as '.$this->fieldEscape.$this->alias.$this->fieldEscape : '');
+		return $this->quoteIdentifier($this->table).(strlen($this->alias) ? ' as '.$this->quoteIdentifier($this->alias) : '');
 	}
 }

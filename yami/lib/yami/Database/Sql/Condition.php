@@ -8,10 +8,18 @@ class Condition extends Expression {
 	protected $field;
 	protected $operator;
 	protected $value;
-	protected $fieldEscape = '`';
 	
-	public function __construct($definition) {
-		$this->parse($definition);		
+	protected $expression;
+	protected $alias;
+		
+	public function __construct($definition = null, $alias = null) {
+		if(!is_null($definition)) {
+			if($definition instanceof Expression) {
+				$this->expression = $definition;
+				$this->alias = $alias;
+			}
+			$this->parse($definition);
+		}	
 	}
 		
 	/**
@@ -30,7 +38,7 @@ class Condition extends Expression {
 	 * @return \yami\Database\Sql\Condition
 	 */
 	public function field($name) {
-		$this->field = str_replace($this->fieldEscape, '', $name);
+		$this->field = str_replace($this->getIdentifierQuoteCharacter(), '', $name);
 		return $this;
 	}
 	
@@ -65,7 +73,22 @@ class Condition extends Expression {
 	}
 	
 	public function __toString() {
-		return (isset($this->table) ? $this->fieldEscape.$this->table.$this->fieldEscape.'.' : '').$this->fieldEscape.$this->field.$this->fieldEscape.' '.$this->operator.' '.$this->value;		
+		if(isset($this->expression)) {
+			return '('.$this->expression.') as '.$this->quoteIdentifier($this->alias);
+		}
+		return (isset($this->table) ? $this->quoteIdentifier($this->byTableByReference($this->table)).'.' : '').$this->quoteIdentifier($this->field).' '.$this->operator.' '.$this->quote($this->value);		
 	}
+	
+	/**
+	 * 
+	 * @param string $field
+	 * @param string $value
+	 * @param string $operator
+	 */
+	public static function make($field = null, $value = null, $operator = '=', $table = null) {
+		$c = new Static();
+		$c->field($field)->value($value)->operator($operator)->table($table);
+		return $c;
+	} 
 	
 }

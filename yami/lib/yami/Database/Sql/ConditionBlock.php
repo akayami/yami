@@ -4,16 +4,27 @@ use yami\Database\Sql\Expression;
 
 class ConditionBlock extends Expression {
 
-	protected $type = "AND";
+	protected $operator = "AND";
 	
 	protected $conditions = array();
 	
 	/**
 	 * 
-	 * @param string $type
+	 * @param string $operator
 	 */
-	public function __construct($type = "AND") {
-		$this->type = $type;
+	public function __construct($operator = "AND") {
+		$this->setLogicalOperator($operator);
+	}
+	
+	public function setLogicalOperator($operator) {
+		$this->operator = $operator;
+	}
+	
+	public function setReference(select $select) {
+		foreach($this->conditions as $condition) {
+			$condition->setReference($select);
+		}
+		parent::setReference($select);
 	}
 
 	/**
@@ -22,15 +33,18 @@ class ConditionBlock extends Expression {
 	 * @return \yami\Database\Sql\ConditionBlock
 	 */
 	public function add($condition) {
-		if(!($condition instanceof Condition) || ($condition instanceof ConditionBlock)) {
+		if(!($condition instanceof Expression)) {
 			$condition = new Condition($condition);
+		}
+		if(!is_null($this->reference)) {
+			$condition->setReference($this->reference);
 		}
 		$this->conditions[] = $condition;
 		return $this;
 	}
 	
 	public function __toString() {
-		return '('.implode(' '.$this->type.' ', $this->conditions).')';
+		return '('.implode(' '.$this->operator.' ', $this->conditions).')';
 	}
 	
 }

@@ -8,10 +8,11 @@ class Field extends Expression {
 	protected $table;
 	protected $field;
 	protected $alias;
-	protected $fieldEscape = '`';
 	
 	public function __construct($definition = null) {
-		$this->parse($definition);
+		if(!is_null($definition)) {
+			$this->parse($definition);
+		}
 	}
 	
 	/**
@@ -34,6 +35,10 @@ class Field extends Expression {
 		return $this;
 	}
 	
+	public function getTable() {
+		return $this->table;
+	}
+	
 	/**
 	 * 
 	 * @param string $name
@@ -42,10 +47,6 @@ class Field extends Expression {
 	public function alias($name) {
 		$this->alias = $name;
 		return $this;
-	}
-	
-	public function getTable() {
-		return $this->table;
 	}
 	
 	public function getField() {
@@ -73,7 +74,20 @@ class Field extends Expression {
 	}
 	
 	public function __toString() {
-		return (strlen($this->table) ? $this->fieldEscape.$this->table.$this->fieldEscape.'.' : '').$this->fieldEscape.$this->field.$this->fieldEscape.(strlen($this->alias) ? ' AS '.$this->fieldEscape.$this->alias.$this->fieldEscape : '');
+		return (strlen($this->table) ? $this->quoteIdentifier($this->byTableByReference($this->table)).'.' : '').$this->quoteIdentifier($this->field).(strlen($this->alias) ? ' AS '.$this->quoteIdentifier($this->alias) : '');
+	}
+	
+	/**
+	 * 
+	 * @param string $field
+	 * @param string $table
+	 * @param string $alias
+	 * @return \yami\Database\Sql\Field
+	 */
+	public static function make($name, $table = null, $alias = null) {
+		$c = new static();
+		$c->field($name)->table($table)->alias($alias);
+		return $c;
 	}
 	
 }

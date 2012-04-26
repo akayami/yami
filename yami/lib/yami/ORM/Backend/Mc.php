@@ -161,8 +161,8 @@ class Mc extends Backend {
 				}
 			}
 			$cached = $this->handle->getMulti($gets);
-			
-			$missing = array_keys(array_diff_key(array_flip($gets), $cached));			
+		
+			$missing = array_keys(array_diff_key(array_flip($gets), (is_array($cached) ? $cached : array())));			
 			if($missing) {
 				/**
 				 * @todo Add a better way of cacheing missing items. Right now, one missing item triggers the whole query

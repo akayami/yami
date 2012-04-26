@@ -4,6 +4,8 @@ use yami\Database\Sql\ConditionBlock;
 
 class Where extends ConditionBlock {
 	
+	protected $operators = array('OR', 'XOR', 'AND');
+	
 	public function __construct($expression) {
 		echo $this->parse($expression);
 	}
@@ -40,16 +42,18 @@ class Where extends ConditionBlock {
 			}
 		}
 		//return $string;
-		echo $this->parsex($string);
+		print_r($this->splitLevel($string));
 	}
+	
 	
 	protected function parsex($string) {
 		$andBlock = new ConditionBlock('AND');				
-		$ands = preg_split('/\s+AND\s+/i', $string);
+		$ands = preg_split('/\s+OR\s+/i', $string);
 		foreach($ands as $and) {			
-			$xors = preg_split('/\s+xor\s+/i', $and);	
+			$xors = preg_split('/\s+XOR\s+/i', $and);	
 			foreach($xors as $xor) {
-				$ors = preg_split('/\s+or\s+/i', $xor);
+				$ors = preg_split('/\s+AND\s+/i', $xor);
+				
 				foreach($ors as $or) {
 					echo "\n".$or;
 				}
@@ -58,10 +62,22 @@ class Where extends ConditionBlock {
 		print_r($ands);
 	}
 	
-	protected function splitLevel($string, $operator) {
+// 	protected function parse($string) {
+// 		return $this->splitLevel($string);
+// 	}
+	
+	protected function splitLevel($string, $level = 0) {
+		$operator = $this->operators[$level];		
 		$split = preg_split('/\s+'.$operator.'\s+/', $string);
-		if($count($split) > 1) {
-			
+		echo "\nSplit:".count($split);
+		if(count($split) > 1) {
+			$out = new ConditionBlock($operator);
+			foreach($split as $cond) {				
+				$out->add($this->splitLevel($cond, $level + 1));
+			}
+			return $out;
+		} else {
+			return new Condition($split[0]);
 		}
 	}
 	

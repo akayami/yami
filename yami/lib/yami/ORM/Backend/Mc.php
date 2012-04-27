@@ -42,7 +42,9 @@ class Mc extends Backend {
 		}
 		if(!is_null($this->transaction)) {
 			if(!$this->handle->setMulti($this->transaction)) {
-				throw new \Exception('Failed to commit transaction to MC');
+				if($this->handle->getResultCode() != 26) { // Happens when MC is completly down.
+					throw new \Exception('Failed to commit transaction to MC:'.$this->handle->getResultMessage(). '['.$this->handle->getResultCode().']', $this->handle->getResultCode());
+				}
 			}
 		}
 		if(!is_null($this->d_transaction)) {
@@ -100,7 +102,7 @@ class Mc extends Backend {
 	 * @param array $tableIdMap
 	 * @param string $cluster
 	 * @param boolean $deepLookup
-	 * @throws Exception
+	 * @throws \Exception
 	 * @return Recordset
 	 */
 	private function selectRefresh($query, $hash, array $tableIdMap, $cluster = 'default', $deepLookup = false) {
@@ -306,8 +308,8 @@ class Mc extends Backend {
 			if($res !== false) {
 				try {
 					$this->mc_set_simple($key, $res, $table, $ids, $cluster);
-				} catch(Exception $e) {
-					//error_log($e->getMessage());
+				} catch(\Exception $e) {
+					error_log($e->getMessage());
 				}
 			} else {	
 				throw new \Exception('Item does not exist');
@@ -326,8 +328,8 @@ class Mc extends Backend {
 					}
 					try {
 						$this->mc_set_simple($key, $res, $table, $ids, $cluster);
-					} catch(Exception $e) {
-						//error_log($e->getMessage());
+					} catch(\Exception $e) {
+						error_log($e->getMessage());
 					}
 				}
 			}
@@ -343,7 +345,7 @@ class Mc extends Backend {
 		$this->clearRelatedSets($table);
 		try {
 			$this->mc_set($key, $subject, $table, $ids, $cluster);
-		} catch(Exception $e) {
+		} catch(\Exception $e) {
 			// error_log($e->getMessage());
 		}
 		return $subject;		
@@ -357,7 +359,7 @@ class Mc extends Backend {
 		try {
 			$this->clearRelatedSets($table);
 			$this->mc_set($subject->getKeys(), $subject, $table, $ids, $cluster);
-		} catch(Exception $e) {
+		} catch(\Exception $e) {
 			// error_log($e->getMessage());
 		}
 		return $subject;		
@@ -371,7 +373,7 @@ class Mc extends Backend {
 		try {
 			$this->clearRelatedSets($table);
 			$this->mc_delete($subject->getKeys(), $subject, $table, $ids, $cluster);
-		} catch(Exception $e) {
+		} catch(\Exception $e) {
 			// error_log($e->getMessage());
 		}
 		return $subject;

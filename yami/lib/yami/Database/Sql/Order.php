@@ -38,6 +38,6 @@ class Order extends Field {
 	}
 	
 	public function __toString() {
-		return (strlen($this->table) ? $this->quoteIdentifier.$this->byTableByReference($this->table).$this->quoteIdentifier.'.' : '').$this->quoteIdentifier.$this->field.$this->quoteIdentifier.' '.$this->direction;
+		return (strlen($this->table) ? $this->quoteIdentifier($this->byTableByReference($this->table)).'.' : '').$this->quoteIdentifier($this->field).' '.$this->direction;
 	}	
 }

@@ -14,26 +14,58 @@ class Select extends Expression {
 		
 	}
 	
+	/**
+	 * 
+	 * @param unknown_type $expression
+	 * @return \yami\Database\Sql\Select
+	 */
 	public function order($expression) {
+		if(is_array($expression)) {
+			foreach($expression as $e) {
+				$this->order($e);
+			}
+			return $this;
+		}
 		if(!($expression instanceof Order)) {
 			$expression = new Order($expression);
 		}	
 		$expression->setReference($this);
 		$this->order[] = $expression;
+		return $this;
 	}
 	
+	/**
+	 * 
+	 * @param unknown_type $expression
+	 * @return \yami\Database\Sql\Select
+	 */
 	public function group($expression) {
+		if(is_array($expression)) {
+			foreach($expression as $e) {
+				$this->group($e);
+			}
+			return $this;
+		}
 		if(!($expression instanceof Field)) {
 			$expression = new Field($expression);
 		}
 		$expression->setReference($this);
 		$this->group[] = $expression;
+		return $this;
 	}
 	
+	/**
+	 * 
+	 * @param int $limit
+	 * @param int $offset
+	 * @throws \Exception
+	 * @return \yami\Database\Sql\Select
+	 */
 	public function limit($limit, $offset = 0) {
 		if(!is_int($limit) || !is_int($offset)) throw new \Exception('Limit and offset must have numeric values');
 		$this->limit['limit'] = $limit;
 		$this->limit['offset'] = $offset;
+		return $this;
 	}
 	
 	/**
@@ -47,6 +79,11 @@ class Select extends Expression {
 		return $this->where; 
 	}
 
+	/**
+	 * 
+	 * @param mixed $expression
+	 * @return \yami\Database\Sql\Select
+	 */
 	public function where($expression) {
 		if(!isset($this->where)) {
 			if($expression instanceof ConditionBlock) {

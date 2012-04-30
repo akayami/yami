@@ -47,4 +47,13 @@ class ConditionBlock extends Expression {
 		return '('.implode(' '.$this->operator.' ', $this->conditions).')';
 	}
 	
+	/**
+	 * 
+	 * @param string $operator
+	 * @return \yami\Database\Sql\ConditionBlock
+	 */
+	public static function make($operator = "AND") {
+		return new static($operator);
+	}
+	
 }

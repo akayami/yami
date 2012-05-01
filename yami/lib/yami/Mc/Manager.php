@@ -19,7 +19,11 @@ class Manager {
 	}
 	
 	public function __clone() {
-		trigger_error('Clone is not allowed.', E_USER_ERROR);
+		throw new \Exception('Cannot clone a singleton:'.get_called_class());
+	}
+
+	public function __wakeup() {
+		throw new \Exception('Unserializing is not allowed for singleton:'.get_called_class());
 	}
 	
 	public static function setConfig(array $config) {

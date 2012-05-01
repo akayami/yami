@@ -26,10 +26,10 @@ class Mc extends Backend {
 		$this->handle = $handle;
 	}
 	
-	public function beginTransaction($cluster = 'default') {
+	public function beginTransaction() {
 				
 		if(isset($this->childBackend)) {
-			$this->childBackend->beginTransaction($cluster);
+			$this->childBackend->beginTransaction();
 		}
 		$this->isTransaction = true;
 		
@@ -135,6 +135,10 @@ class Mc extends Backend {
 			}
 			$this->addRelatedSets($table, $hash);
 		}
+		
+		/**
+		 * @todo Investigate if this loop is nessesary. It looks like the addRelatedSets is executed above and should not be required
+		 */
 		foreach($tableIdMap as $table => $crap) {
 			$this->addRelatedSets($table, $hash);
 		}

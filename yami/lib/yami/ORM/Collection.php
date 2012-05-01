@@ -77,10 +77,17 @@ abstract class Collection extends \ArrayIterator {
 	
 	public static function getAll($limit = null, $offset = null) {
 		return new static(static::getBackend()->select(
-			self::getQuery('SELECT * FROM '.static::getTableName(), $limit, $offset), 
+			static::select()->limit($limit, $offset), 
 			array(static::getTableName() => static::getIds())
 		)->getArrayCopy());
 	}
+	
+// 	public static function getAll($limit = null, $offset = null) {
+// 		return new static(static::getBackend()->select(
+// 			self::getQuery('SELECT * FROM '.static::getTableName(), $limit, $offset), 
+// 			array(static::getTableName() => static::getIds())
+// 		)->getArrayCopy());
+// 	}
 
 	/**
 	 * 

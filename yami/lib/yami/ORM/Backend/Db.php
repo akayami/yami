@@ -33,9 +33,9 @@ class Db extends Backend {
 		return (isset($this->connection) ? ($this->connection->isMaster() ? $this->connection : $this->connection = $this->backend->master($new)) : $this->connection = $this->backend->master($new));
 	}
 	
-	public function beginTransaction($cluster = 'default') {
+	public function beginTransaction() {
 		if(isset($this->childBackend)) {
-			$this->childBackend->beginTransaction($cluster);
+			$this->childBackend->beginTransaction();
 		}
 		$h = $this->getMasterHandle(true);
 		$h->transaction();

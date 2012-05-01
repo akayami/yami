@@ -162,7 +162,7 @@ abstract class Backend {
 		$this->childBackend = $backend;
 	}
 	
-	abstract public function beginTransaction($cluster = 'default');
+	abstract public function beginTransaction();
 	
 	abstract public function commitTransaction();
 	

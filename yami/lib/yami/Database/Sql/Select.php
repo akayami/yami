@@ -61,11 +61,37 @@ class Select extends Expression {
 	 * @throws \Exception
 	 * @return \yami\Database\Sql\Select
 	 */
-	public function limit($limit, $offset = 0) {
+	public function limit($limit = null, $offset = null) {
+		if(is_null($offset)) {
+			unset($this->limit['offset']);
+		}
+		if(is_null($limit)) {
+			unset($this->limit['offset']);
+			unset($this->limit['limit']);
+			return $this;
+		}
 		if(!is_int($limit) || !is_int($offset)) throw new \Exception('Limit and offset must have numeric values');
 		$this->limit['limit'] = $limit;
 		$this->limit['offset'] = $offset;
 		return $this;
+	}
+	
+	public function hasLimit() {
+		return isset($this->limi);
+	}
+	
+	/**
+	 * @return int
+	 */
+	public function getLimitValue() {
+		return $this->limit['limit'];
+	}
+	
+	/**
+	 * @return int
+	 */
+	public function getOffsetValue() {
+		return $this->limit['offset'];
 	}
 	
 	/**
@@ -150,6 +176,10 @@ class Select extends Expression {
 	
 	
 	public function __toString() {
+		return $this->get();
+	}
+	
+	public function get($skipLimit = false, $skipOrder = false) {
 		$q = "SELECT ".(count($this->field) ? implode(', ', $this->field) : '*')." FROM ".implode(', ',$this->from);
 		if(isset($this->where)) {
 			$q.= ' WHERE '.$this->where;
@@ -157,10 +187,10 @@ class Select extends Expression {
 		if(count($this->group)) {
 			$q.= ' GROUP BY '.implode(', ', $this->group);
 		}
-		if(count($this->order)) {
+		if(count($this->order) && !$skipOrder) {
 			$q.= ' ORDER BY '.implode(', ', $this->order);
 		}
-		if(isset($this->limit)) {
+		if(isset($this->limit) && !$skipLimit) {
 			$q.= ' LIMIT '.$this->limit['limit'].' OFFSET '.$this->limit['offset'];
 		}
 		return $q;

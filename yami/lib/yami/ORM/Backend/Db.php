@@ -156,9 +156,16 @@ class Db extends Backend {
 		}		
 		$h = (isset($this->connection) ? $this->connection : $this->connection = $this->backend->slave());
 		$q = 'SELECT * FROM '.$table.' WHERE '.$this->getIdentifierWhere($ids, $h);
-		try {
-			$res = $h->pquery($q, $aId)->fetch();
-			return $res;	
+		try {			
+			$res = $h->pquery($q, $aId);
+			$res->fetchMode($res::FETCH_NUM);
+			$fields = $res->fields();
+			$row = $res->fetch();
+			$out = array();
+			foreach($row as $key => $val) {
+				$out[$fields[$key]->identifier()] = $val;
+			}
+			return $out;
 		} catch(Exception $e) {
 			throw new Exception('noitemfound', 'Requested item was not found', null, $e);
 		}

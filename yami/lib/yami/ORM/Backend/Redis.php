@@ -24,10 +24,15 @@ class Redis extends Backend {
 	private $connection;
 	
 	protected $key_concat = '|';
+	protected $isTransaction = false;
+	protected $d_transaction = null;
+	protected $transaction = null;
+	
 	
 	public function __construct(Cluster $cluster) {
 		$this->backend = $cluster;
-		$this->backend->get();
+//		$this->backend->master()->flushDB();
+//		echo "Flushing";
 	}
 	
 	private function getMasterHandle($new = false) {
@@ -40,6 +45,7 @@ class Redis extends Backend {
 		}
 		$this->connection = $this->backend->master(true);
 		$this->connection->multi();
+		$this->isTransaction = true;
 	}
 	
 	public function rollbackTransaction() {
@@ -47,6 +53,9 @@ class Redis extends Backend {
 			$this->childBackend->rollbackTransaction();
 		}
 		$this->connection->discard();
+		$this->isTransaction = false;
+		unset($this->transaction_increment);
+		unset($this->transaction);
 	}
 	
 	public function commitTransaction() {
@@ -54,6 +63,7 @@ class Redis extends Backend {
 			$this->childBackend->commitTransaction();
 		}
 		$this->connection->exec();	
+		$this->isTransaction = false;
 	}
 	
 	/**
@@ -132,117 +142,240 @@ class Redis extends Backend {
 		}
 	}
 	
-	private function selectRefresh($query, $hash, array $tableIdMap, $cluster = 'default', $deepLookup = false) {
-		$res = $this->childBackend->select($query, $tableIdMap, $cluster, $deepLookup = false);
-		$explodedRes = $this->explodeFromResultSet($res);
-		$sets = array();
-		$keyRecordSet = array();
-		$this->connection->multi();
-		foreach($explodedRes as $table => $data) {
-			foreach($data as $index => $row) {
-				$keyVals = array();
-				$key_serial = array();
-				if(isset($tableIdMap[$table])) {
-					foreach($tableIdMap[$table] as $id) {
-						if(isset($row[$id])) {
-							$keyVals[] = $row[$id];
-							$key_serial[] = $table.'.'.$id.'='.$row[$id];
-							if(!isset($keyRecordSet[$table])) {
-								$keyRecordSet[$table] = array();
-							}
-							if(!isset($keyRecordSet[$table][$index])) {
-								$keyRecordSet[$table][$index] = array();
-							}
-							$keyRecordSet[$table][$index][$id] = $row[$id];
-				
-						} else {
-							throw new \Exception('Provided id '.$id.' is missing in the query output. Mismatched table structure?');
-						}
-					}
-				}
-				// Updating the entity record
-				$entityRedKey = $this->generateEntityKey($keyVals, $table, (isset($tableIdMap[$table]) ? $tableIdMap[$table] : null), $cluster);
-				if(!($out = $this->connection->set($entityRedKey, $this->serialize($row)))) {
-					throw new \Exception('Failed to set key:'.$entityRedKey);
-				}
-				// Updating the record set
-				echo $hash.'<='.implode($this->key_concat,$key_serial);
-				if(!$this->connection->rPush($hash, implode($this->key_concat,$key_serial))) {
-					echo "Failed to rpush into $hash ".implode($this->key_concat,$key_serial);
-				}
+	protected function getSelectKey($query) {
+		return hash('md5', $query);
+	}
+	
+	private function flatternTableIdMap(array $tableIdMap) {
+		$out = array();
+		foreach($tableIdMap as $key => $val) {
+			foreach($val as $id) {
+				$out[] = $key.'.'.$id;
 			}
 		}
-		
-		if(!($out = $this->connection->exec())) {
-			echo "Failed exec:".print_r($out);
-		} else {
-			print_r($out);
+		return $out;
+	}
+	
+	
+	
+	private function getEntityKey($cluster, array $keys, array $row) {
+		$output = array();
+		foreach(array_intersect_key($row, array_flip($keys)) as $key => $value) {
+			$output[] = $key.'.'.$value;
 		}
-		return $res;
+		return implode($this->key_concat, $output);
 	}
 	
-	public function _select($query, array $tableIdMap, $cluster = 'default', $deepLookup = false) {
-		$h = (isset($this->connection) ? $this->connection : $this->connection = $this->backend->slave());
-		
-		if($query instanceof Select) {	
-			$hash = md5($query->get(true));
-			if($query->hasLimit()) {
-				$limit = $query->getLimitValue();
-				$offset = $query->getOffsetValue();
-				$cachedRes = $h->lRange($hash, $offset, $offset + $limit);
-			} else {
-				echo "Getting !";
-				$cachedRes = $h->get($hash);
-				var_dump($cachedRes);
-
-			}
-		} else {
-			throw new Exception('Handling non-objectified query not implemented yet');
-		}
-		if($cachedRes === false) {
-			echo "not cached [{$hash}]";
-			if(isset($this->childBackend)) {
-				return $this->selectRefresh($query, $hash, $tableIdMap, $cluster = 'default', $deepLookup = false);
-			} else {
-				return null;
-			}
-		} else {
-		
-		}		
-	}
-	
-	public function _query($query, array $tables, $cluster = 'default', $deepLookup = false) {
-		
-	}
-	
-	
-	public function get($key, $table, $ids, $cluster, $deepLookup = false) {
-		
-	}
-	
-	protected function _update($key, Entity $subject, $table, array $ids, $cluster, $skipMaster = false) {
-		
-	}
-	
-	protected function _insert($key, Entity $subject, $table, array $ids, $cluster) {
-		
-	}
-	
-	protected function _delete($key, Entity $subject, $table, $ids, $cluster) {
-		
-	}
-	
-	protected function _increment($data, $key, Entity $subject, $table, $ids, $cluster) {
-		
-	}
-	
-	public function generateEntityKey($key, $table, $ids, $cluster) {
+	protected function prepareKey($key, $table, $ids, $cluster) {
 		if(!is_array($ids)) {
 			$ids = array($ids);
 		}
 		if(!is_array($key)) {
 			$key = array($key);
 		}
-		return $cluster.'.'.$table.'.'.implode($this->key_concat, $ids).'.'.implode($this->key_concat, $key);
+		$keys = array();
+		$row = array();
+		for($i = 0; $i < count($key); $i++) {
+			$row[$table.'.'.$ids[$i]] = (isset($key[$ids[$i]]) ? $key[$ids[$i]] : $key[$i]);
+			$keys[] = $table.'.'.$ids[$i];
+		}
+		return $this->getEntityKey($cluster, $keys, $row);		
 	}
+	
+	
+	
+	private function selectRefresh($query, $hash, array $tableIdMap, $cluster = 'default', $deepLookup = false) {
+		$h = $this->backend->master(); // Better master/slave switcher
+		$res = $this->childBackend->select($query, $tableIdMap, $cluster, $deepLookup = false);
+		try {
+			$this->connection->multi();
+			$t = $this->flatternTableIdMap($tableIdMap);
+			foreach($res as $index => $row) {		
+				$key = $this->getEntityKey($cluster, $t, $row);
+				//echo $key;
+				foreach($row as $field => $value) {							
+					$this->connection->hSet($key, $field, $value);
+				}
+				$this->connection->zAdd($hash, $index, $key);
+			}
+			if($out = $this->connection->exec() === false) {
+				throw new \Exception('Failed to safe into Redis.:'.print_r($out, true));
+			}
+			foreach($tableIdMap as $table => $crap) {
+				$this->addRelatedSets($table, $hash);
+			}
+		} catch(\Exception $e) {
+			$this->connection->discard();
+			throw $e;
+		}		
+		return $res;
+	}
+	
+	public function _select($query, array $tableIdMap, $cluster = 'default', $deepLookup = false) {
+		$this->connection = (isset($this->connection) ? $this->connection : $this->backend->slave());
+		if($query instanceof Select) {	
+			$hash = md5($query->get(true));			
+			if($this->connection->exists($hash)) {
+				if($query->hasLimit()) {
+					$limit = $query->getLimitValue();
+					$offset = $query->getOffsetValue();
+					$cachedRes = $this->connection->zRange($hash, $offset, $offset + $limit);
+				} else {
+					$cachedRes = $this->connection->zRange($hash, 0, -1);	
+				}
+				if($cachedRes !== false) {				
+					foreach($cachedRes as $i => $keys) {
+						$cachedRes[$i] = $this->connection->hGetAll($keys);
+					}
+					return new Recordset($cachedRes);	// Found in cache and successfully retrived 
+				}
+			}
+			if(isset($this->childBackend)) {
+				$val = $this->selectRefresh($query, $hash, $tableIdMap, $cluster = 'default', $deepLookup = false);
+				return $val;
+			} else {
+				return null;
+			}				
+		} else {
+			throw new Exception('Handling non-objectified query not implemented yet');
+		}
+	}
+	
+	
+	public function _query($query, array $tables, $cluster = 'default', $deepLookup = false) {
+		$this->connection = $this->backend->master();
+		$hash = $this->getSelectKey($query);
+		if($this->connection->exists($hash)) {
+			$data = unserialize($this->connection->get($hash));
+			if(is_array($data)) {
+				return new Recordset($data);
+			}
+		}
+		if(isset($this->childBackend)) {
+			$res = $this->childBackend->query($query, $tables, $cluster, $deepLookup);
+			if(!$this->connection->set($hash, serialize($res->getArrayCopy()))) {
+				error_log('Failed to add '.$hash.' to redis');
+				throw new \Exception('Failed to add '.$hash.' to redis');
+			}
+			foreach($tables as $table) {
+				$this->addRelatedSets($table, $hash);
+			}
+			return $res;
+		} else {
+			return new Recordset();
+		}
+	}
+	
+	public function addRelatedSets($table, $hash) {
+		$this->connection = $this->backend->master();
+		$this->connection->sAdd('keyHashList.'.$table, $hash);
+	}
+	
+	public function clearRelatedSets($table) {
+		$this->connection = $this->backend->master();
+		foreach($this->connection->sGetMembers('keyHashList.'.$table) as $key) {
+			$this->connection->delete($key);
+		}
+		$this->connection->delete('keyHashList.'.$table);
+	}
+		
+	public function get($key, $table, $ids, $cluster, $deepLookup = false) {
+		$this->connection = $this->backend->slave();
+		$hash = $this->prepareKey($key, $table, $ids, $cluster);
+		if($deepLookup === true && isset($this->childBackend)) {
+			$this->connection = $this->backend->master();
+			$res = $this->childBackend->get($key, $table, $ids, $cluster, $deepLookup);
+			if($res !== false) {
+				$this->connection->multi();
+				foreach($res as $field => $value) {
+					$this->connection->hSet($hash, $field, $value);
+				}
+				if(!$this->connection->exec()) {
+					throw new \Exception('Failed to push into Redis');
+				}
+			} else {
+				throw new \Exception('Item does not exist');
+			}
+		} else {			
+			if(!$this->connection->exists($hash) || ($res = $this->connection->hGetAll($hash)) === false) {
+				$this->connection = $this->backend->master();
+				$res = $this->childBackend->get($key, $table, $ids, $cluster);				
+				if($res === false) {
+					throw new \Exception('Item does not exist');
+				}
+				$this->connection->multi();
+
+				foreach($res as $field => $value) {
+					$this->connection->hSet($hash, $field, $value);
+				}
+				if(!$this->connection->exec()) {
+					throw new \Exception('Failed to push into Redis');
+				}
+			}
+		}
+		return $res;
+			
+	}
+	
+	protected function _update($key, Entity $subject, $table, array $ids, $cluster, $skipMaster = false) {
+		$this->connection = $this->backend->master();
+		$this->clearRelatedSets($table);
+		$data = $subject->getArrayCopy();
+		$hash = $this->prepareKey($key, $data, $ids, $cluster);
+		
+		$this->connection->multi();
+		foreach($data as $field => $value) {
+			$this->connection->hSet($hash, $field, $value);
+		}
+		if(!$this->connection->exec()) {
+			throw new \Exception('Failed to push into Redis');
+		}
+		return $subject;
+	}
+	
+	protected function _insert($key, Entity $subject, $table, array $ids, $cluster) {
+		$this->connection = $this->backend->master();
+		$this->clearRelatedSets($table);
+		$data = $subject->getArrayCopy();
+		$hash = $this->prepareKey($key, $data, $ids, $cluster);
+		
+		$this->connection->multi();
+		foreach($data as $field => $value) {
+			$this->connection->hSet($hash, $field, $value);
+		}
+		if(!$this->connection->exec()) {
+			throw new \Exception('Failed to push into Redis');
+		}
+		return $subject;
+	}
+	
+	protected function _delete($key, Entity $subject, $table, $ids, $cluster) {
+		$hash = $this->prepareKey($key, $table, $ids, $cluster);
+		$this->connection = $this->backend->master();
+		try {
+			$this->clearRelatedSets($table);
+			$this->connection->delete($hash);
+		} catch(\Exception $e) {
+			
+		}
+		return $subject;
+	}
+	
+	/**
+	 * (non-PHPdoc)
+	 * @see yami\ORM.Backend::_increment()
+	 */
+	protected function _increment($data, $key, Entity $subject, $table, $ids, $cluster) {
+		
+	}
+	
+// 	private function generateEntityKey($key, $table, $ids, $cluster) {
+// 		if(!is_array($ids)) {
+// 			$ids = array($ids);
+// 		}
+// 		if(!is_array($key)) {
+// 			$key = array($key);
+// 		}
+// 		return $cluster.'.'.$table.'.'.implode($this->key_concat, $ids).'.'.implode($this->key_concat, $key);
+// 	}
 }

@@ -18,6 +18,7 @@ abstract class Entity extends \ArrayObject {
 	public $counterFields = array();
 	
 	public function __construct($data = null, $masterValues = false) {
+				
 		if(is_object($data)) {
 			parent::__construct($data->getArrayCopy());
 		} elseif (is_array($data)) {
@@ -140,6 +141,8 @@ abstract class Entity extends \ArrayObject {
 		foreach($ids as $id) {
 			if(isset($this[$id])) {
 				$keys[$id] = $this[$id];
+			} elseif(isset($this[static::$tableName.'.'.$id])) {
+				$keys[$id] = $this[static::$tableName.'.'.$id];
 			} else {
 				throw new \Exception('Missing key :'.$id);
 			}
@@ -282,7 +285,7 @@ abstract class Entity extends \ArrayObject {
 	}
 	
 	protected static function getIds() {
-		return static::$ids;
+		return static::$ids;		
 	}
 	
 	protected static function getCluster() {

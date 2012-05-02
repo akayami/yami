@@ -78,7 +78,7 @@ class Mc extends Backend {
 		$mcRes = $this->handle->get($hash);
 		if($this->handle->getResultCode() != \Memcached::RES_SUCCESS) {
 			if(isset($this->childBackend)) {
-				$res = $this->childBackend->select($query, $tables, $cluster, $deepLookup);
+				$res = $this->childBackend->query($query, $tables, $cluster, $deepLookup);
 				$this->handle->set($hash, $res->getArrayCopy());
 				if($this->handle->getResultCode() != \Memcached::RES_SUCCESS) {
 					error_log('Failed to add '.$hash);

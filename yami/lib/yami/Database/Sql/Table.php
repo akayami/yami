@@ -57,7 +57,14 @@ class Table extends Expression {
 		} else{
 			throw new \Exception('Unreadable field format');
 		}
-	}	
+	}
+	
+	public static function make($name, $alias = null) {
+		$o = new static();
+		$o->table($name);
+		$o->alias($alias);
+		return $o;
+	}
 	
 	public function __toString() {
 		return $this->quoteIdentifier($this->table).(strlen($this->alias) ? ' as '.$this->quoteIdentifier($this->alias) : '');

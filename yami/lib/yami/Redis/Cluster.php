@@ -90,4 +90,19 @@ class Cluster {
 		return $a;		
 	}
 	
+	
+	public function __destruct() {
+// 		foreach($this->instances as $type => $conns) {
+// 			foreach($conns as $conn) {
+// 				try {
+// 					if($conn->ping()) {
+// 						$conn->close();
+// 					}
+// 				} catch(RedisException $e) {
+					
+// 				}
+// 			}
+// 		} 
+			
+	}
 }

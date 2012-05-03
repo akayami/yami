@@ -160,12 +160,15 @@ class Db extends Backend {
 			$res = $h->pquery($q, $aId);
 			$res->fetchMode($res::FETCH_NUM);
 			$fields = $res->fields();
-			$row = $res->fetch();
-			$out = array();
-			foreach($row as $key => $val) {
-				$out[$fields[$key]->identifier()] = $val;
+			if($row = $res->fetch()) {				
+				$out = array();
+				foreach($row as $key => $val) {
+					$out[$fields[$key]->identifier()] = $val;
+				}
+				return $out;
+			} else {
+				throw new Exception('Unable to return');
 			}
-			return $out;
 		} catch(Exception $e) {
 			throw new Exception('noitemfound', 'Requested item was not found', null, $e);
 		}

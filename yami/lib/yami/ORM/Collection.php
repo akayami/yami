@@ -12,16 +12,9 @@ abstract class Collection extends \ArrayIterator {
 	protected $select;
 
 	
-	public function __construct($array) {
-		foreach($array as $index => $row) {
-			foreach($row as $key => $val) {
-				$aKey = explode('.', $key);
-				$array[$index][$aKey[1]] = $val;
-				unset($array[$index][$key]);
-			}
-		}
-		parent::__construct($array);
-	} 
+// 	public function __construct($array) {
+// 		parent::__construct($array);
+// 	} 
 	
 
 	/**
@@ -139,5 +132,9 @@ abstract class Collection extends \ArrayIterator {
 	
  	public function current() {
  		return $this->getEntity(parent::current());
- 	} 	
+ 	} 
+ 	
+ 	public function offsetGet($index) {
+ 		return $this->getEntity(parent::offsetGet($index));
+ 	}
 }

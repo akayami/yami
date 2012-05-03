@@ -18,11 +18,11 @@ abstract class Entity extends \ArrayObject {
 	public $counterFields = array();
 	
 	public function __construct($data = null, $masterValues = false) {
-				
+		
 		if(is_object($data)) {
-			parent::__construct($data->getArrayCopy());
+			$this->setData($data->getArrayCopy());
 		} elseif (is_array($data)) {
-			parent::__construct($data);
+			$this->setData($data);
 		} else {
 			if(!is_null($data)) {
 				$this->_byId($data);
@@ -31,6 +31,16 @@ abstract class Entity extends \ArrayObject {
 		if($masterValues === true) {
 			$this->update(true);
 		}
+	}
+	
+	protected function setData(array $data) {
+		foreach($data as $column => $val) {
+			$data[str_replace($this::$tableName.".", '', $column, &$c)] = $val;
+			if($c > 0) {
+				unset($data[$column]);
+			}
+		}
+		parent::__construct($data);
 	}
 		
 	public static function getStructure() {
@@ -177,7 +187,8 @@ abstract class Entity extends \ArrayObject {
 	 * @throws Exception
 	 */
 	protected function _byId($id) {
-		$this->exchangeArray(static::_byId_Routine($id));
+		$this->exchangeArray(array());
+		$this->setData(static::_byId_Routine($id));
 	}
 	
 	/**
@@ -257,7 +268,7 @@ abstract class Entity extends \ArrayObject {
 				if(isset($this[$id])) {
 					$keys[$id] = $this[$id];
 				} else {
-					throw new \Exception('Missing key :'.$id);
+					throw new \Exception('Missing key: '.$id);
 				}
 			}
 		}
@@ -296,9 +307,10 @@ abstract class Entity extends \ArrayObject {
 		return 'id';
 	}
 	
-// 	public function getCluster() {
-// 		return 'default';
-// 	}
+	public function offsetSet($index, $newval) {
+		parent::offsetSet(str_replace($this::$tableName.".", '', $index), $newval);
+	}
+	
 	
 	public function __set($key, $val) {
 		$this[$key] = $val;
@@ -314,5 +326,17 @@ abstract class Entity extends \ArrayObject {
 	
 	public function __unset($key) {
 		unset($this[$key]);
-	}	
+	}
+	
+	public function get($index, $default = '') {
+		if(isset($this[$index])) {
+			return $this[$index];
+		} else {
+			return $default;
+		}
+	}
+	
+	public function set($index, $value) {
+		$this[$index] = $value;
+	}
 }

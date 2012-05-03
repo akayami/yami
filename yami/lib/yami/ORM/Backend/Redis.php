@@ -172,7 +172,7 @@ class Redis extends Backend {
 		}
 		if(!is_array($key)) {
 			$key = array($key);
-		}
+		}		
 		$keys = array();
 		$row = array();
 		for($i = 0; $i < count($key); $i++) {
@@ -186,16 +186,16 @@ class Redis extends Backend {
 	
 	private function selectRefresh($query, $hash, array $tableIdMap, $cluster = 'default', $deepLookup = false) {
 		$h = $this->backend->master(); // Better master/slave switcher
-		$res = $this->childBackend->select($query, $tableIdMap, $cluster, $deepLookup = false);
+		$res = $this->childBackend->select($query, $tableIdMap, $cluster, $deepLookup = false);	
 		try {
 			$this->connection->multi();
 			$t = $this->flatternTableIdMap($tableIdMap);
 			foreach($res as $index => $row) {		
 				$key = $this->getEntityKey($cluster, $t, $row);
-				//echo $key;
-				foreach($row as $field => $value) {							
-					$this->connection->hSet($key, $field, $value);
+				foreach($row as $field => $value) {					
+					$this->connection->hSet($key, $field, $value);					
 				}
+				
 				$this->connection->zAdd($hash, $index, $key);
 			}
 			if($out = $this->connection->exec() === false) {
@@ -212,7 +212,8 @@ class Redis extends Backend {
 	}
 	
 	public function _select($query, array $tableIdMap, $cluster = 'default', $deepLookup = false) {
-		$this->connection = (isset($this->connection) ? $this->connection : $this->backend->slave());
+		$this->connection = $this->backend->master(true);
+		//$this->connection = (isset($this->connection) ? $this->connection : $this->backend->slave());
 		if($query instanceof Select) {	
 			$hash = md5($query->get(true));			
 			if($this->connection->exists($hash)) {
@@ -223,12 +224,14 @@ class Redis extends Backend {
 				} else {
 					$cachedRes = $this->connection->zRange($hash, 0, -1);	
 				}
-				if($cachedRes !== false) {				
+				if($cachedRes !== false) {
 					foreach($cachedRes as $i => $keys) {
 						$cachedRes[$i] = $this->connection->hGetAll($keys);
 					}
 					return new Recordset($cachedRes);	// Found in cache and successfully retrived 
 				}
+			} else {
+				$cachedRes = $this->connection->zRange($hash, 0, -1);
 			}
 			if(isset($this->childBackend)) {
 				$val = $this->selectRefresh($query, $hash, $tableIdMap, $cluster = 'default', $deepLookup = false);
@@ -243,18 +246,22 @@ class Redis extends Backend {
 	
 	
 	public function _query($query, array $tables, $cluster = 'default', $deepLookup = false) {
-		$this->connection = $this->backend->master();
+		$this->connection = $this->backend->master(true);
 		$hash = $this->getSelectKey($query);
 		if($this->connection->exists($hash)) {
-			$data = unserialize($this->connection->get($hash));
+			$data = @unserialize($this->connection->get($hash));
 			if(is_array($data)) {
 				return new Recordset($data);
 			}
 		}
 		if(isset($this->childBackend)) {
 			$res = $this->childBackend->query($query, $tables, $cluster, $deepLookup);
-			if(!$this->connection->set($hash, serialize($res->getArrayCopy()))) {
-				error_log('Failed to add '.$hash.' to redis');
+			$data = serialize($res->getArrayCopy());
+			$this->connection = $this->backend->master(true);
+			if(($setResult = $this->connection->set($hash, $data)) !== true) {
+				//error_log('Failed to add '.$hash.' to redis');
+				var_dump($setResult);
+				//throw new \Exception('Failed to add '.$hash.' to redis');
 				throw new \Exception('Failed to add '.$hash.' to redis');
 			}
 			foreach($tables as $table) {
@@ -267,12 +274,12 @@ class Redis extends Backend {
 	}
 	
 	public function addRelatedSets($table, $hash) {
-		$this->connection = $this->backend->master();
+		$this->connection = $this->backend->master(true);
 		$this->connection->sAdd('keyHashList.'.$table, $hash);
 	}
 	
 	public function clearRelatedSets($table) {
-		$this->connection = $this->backend->master();
+		$this->connection = $this->backend->master(true);
 		foreach($this->connection->sGetMembers('keyHashList.'.$table) as $key) {
 			$this->connection->delete($key);
 		}
@@ -321,7 +328,7 @@ class Redis extends Backend {
 		$this->connection = $this->backend->master();
 		$this->clearRelatedSets($table);
 		$data = $subject->getArrayCopy();
-		$hash = $this->prepareKey($key, $data, $ids, $cluster);
+		$hash = $this->prepareKey($key, $table, $ids, $cluster);
 		
 		$this->connection->multi();
 		foreach($data as $field => $value) {
@@ -337,7 +344,7 @@ class Redis extends Backend {
 		$this->connection = $this->backend->master();
 		$this->clearRelatedSets($table);
 		$data = $subject->getArrayCopy();
-		$hash = $this->prepareKey($key, $data, $ids, $cluster);
+		$hash = $this->prepareKey($key, $table, $ids, $cluster);
 		
 		$this->connection->multi();
 		foreach($data as $field => $value) {
@@ -368,14 +375,4 @@ class Redis extends Backend {
 	protected function _increment($data, $key, Entity $subject, $table, $ids, $cluster) {
 		
 	}
-	
-// 	private function generateEntityKey($key, $table, $ids, $cluster) {
-// 		if(!is_array($ids)) {
-// 			$ids = array($ids);
-// 		}
-// 		if(!is_array($key)) {
-// 			$key = array($key);
-// 		}
-// 		return $cluster.'.'.$table.'.'.implode($this->key_concat, $ids).'.'.implode($this->key_concat, $key);
-// 	}
 }

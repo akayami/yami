@@ -5,6 +5,20 @@ use yami\Database\Sql\Field;
 class Order extends Field {
 		
 	protected $direction = 'ASC';
+
+		
+	public function field($expr) {
+		if(strtoupper($expr) == 'RAND()') {
+			$expr = new Expression($expr);
+		}
+		$this->field = $expr;
+		return $this;
+	}
+	
+	protected function parse(array $expression) {
+		$this->field($expression['base_expr']);
+		$this->direction($expression['direction']);	
+	}
 	
 	/**
 	 * 
@@ -20,7 +34,7 @@ class Order extends Field {
 		return $this;
 	}
 	
-	protected function parse($string) {
+	protected function breakUpString($string) {
 		if(preg_match("#((?P<table>\w+)\.)?(?P<field>\w+)(\s+(?P<direction>(asc|desc)))?#i", $string, $matches)) {
 			if(isset($matches['table']) && strlen($matches['table'])) {
 				$this->table($matches['table']);

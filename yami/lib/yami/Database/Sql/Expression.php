@@ -31,6 +31,9 @@ class Expression {
 	}
 	
 	public function quoteIdentifier($field) {
+		if($field instanceof Expression) {
+			return $field;
+		}
 		return $this->getIdentifierQuoteCharacter().$field.$this->getIdentifierQuoteCharacter();
 	}
 	
@@ -38,11 +41,19 @@ class Expression {
 		return $this->quoteChr;
 	}
 	
+	public function getValueQuoteCharacter() {
+		return "'";
+	}
+	
 	public function quote($value) {
-		if(isset($this->reference)) {
-			return $this->reference->quote($value);
+		if($value instanceof Expression) {
+			return "(".$value.")";
 		} else {
-			return "'".$value."'";
+			if(isset($this->reference)) {
+				return $this->reference->quote($value);
+			} else {
+				return "'".$value."'";
+			}
 		}
 	}
 		

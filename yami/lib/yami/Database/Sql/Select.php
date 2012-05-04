@@ -10,8 +10,39 @@ class Select extends Expression {
 	protected $order = array();
 	protected $limit;
 	
-	public function __construct() {
+	public function __construct($query = null) {
+		if(!is_null($query)) {
+			if(is_array($query)) {
+				$this->parseSelect($query);
+			}elseif(is_string($query)) {
+				$parser = new \PHPSQLParser($query);
+				if($parser->parsed) {
+					print_r($parser->parsed);
+					$this->parseSelect($parser->parsed);
+				}
+			}
+		}
 		
+	}
+	
+	private function parseSelect($struc) {
+		foreach($struc['SELECT'] as $field) {
+			$this->field(new Field($field));
+		}
+		foreach($struc['FROM'] as $table) {
+			$this->from(new Table($table));
+		}
+		if(isset($struc['WHERE'])) {
+			$this->where(new ConditionBlock($struc['WHERE']));
+		}
+		if(isset($struc['ORDER'])) {
+			foreach($struc['ORDER'] as $o) {
+				$this->order(new Order($o));
+			}
+		}
+		if(isset($struc['LIMIT'])) {
+			$this->limit($struc['LIMIT']['start'], $struc['LIMIT']['end']);
+		}
 	}
 	
 	/**
@@ -62,15 +93,15 @@ class Select extends Expression {
 	 * @return \yami\Database\Sql\Select
 	 */
 	public function limit($limit = null, $offset = null) {
-		if(is_null($offset)) {
-			unset($this->limit['offset']);
-		}
-		if(is_null($limit)) {
-			unset($this->limit['offset']);
-			unset($this->limit['limit']);
-			return $this;
-		}
-		if(!is_int($limit) || !is_int($offset)) throw new \Exception('Limit and offset must have numeric values');
+// 		if(is_null($offset)) {
+// 			unset($this->limit['offset']);
+// 		}
+// 		if(is_null($limit)) {
+// 			unset($this->limit['offset']);
+// 			unset($this->limit['limit']);
+// 			return $this;
+// 		}
+// 		if(!is_int($limit) || !is_int($offset)) throw new \Exception('Limit and offset must have numeric values');
 		$this->limit['limit'] = $limit;
 		$this->limit['offset'] = $offset;
 		return $this;

@@ -10,8 +10,14 @@ class Field extends Expression {
 	protected $alias;
 	
 	public function __construct($definition = null) {
-		if(!is_null($definition)) {
+		if($definition instanceof Expression) {
+			$this->field = $definition;
+		} elseif(is_array($definition)) {
 			$this->parse($definition);
+		} else {
+			if(!is_null($definition)) {
+				$this->breakUpString($definition);
+			}
 		}
 	}
 	
@@ -31,6 +37,9 @@ class Field extends Expression {
 	 * @return \yami\Database\Sql\Field
 	 */
 	public function field($name) {
+		if($name == '*') {
+			$name = new Expression('*');
+		}
 		$this->field = $name;
 		return $this;
 	}
@@ -57,11 +66,53 @@ class Field extends Expression {
 		return $this->alias;
 	}
 	
-	protected function parse($string) {		
-		if(preg_match("#((?P<table>\w+)\.)?(?P<field>\w+)(\s+as\s+(?P<alias>\w+))?#", $string, $matches)) {
+	protected function parse(array $field) {
+		switch($field['expr_type']) {
+			case 'colref':
+				$this->breakUpFieldDetails($field['base_expr']);
+				break;
+			case 'aggregate_function':
+				$this->field(new SQLFunction($field));
+				break;
+			case 'expression':
+				if(count($field['sub_tree']) > 1) {
+					throw new Exception('Unsupported mulit expression field');
+				}					
+				switch($field['sub_tree'][0]['expr_type']) {
+					case 'subquery':
+						$this->field(new Select($field['sub_tree'][0]['sub_tree']));
+						break;
+					default:
+						throw new \Exception('unsupported field type expression');
+				}
+				break;
+			default:
+				throw new \Exception('unsupported field type:'.$field['expr_type']);
+		}
+		if(isset($field['alias'])) {
+			$this->alias($field['alias']['name']);
+		}
+	}
+	
+	protected function breakUpFieldDetails($string) {
+		$regex = "#((?P<table>\w+)\.)?(?P<field>(?:\w+)|(?:\*+))#";
+		if(preg_match($regex, $string, $matches)) {
 			if(isset($matches['table']) && strlen($matches['table'])) {
 				$this->table($matches['table']);
 			}
+			if(isset($matches['field']) && strlen($matches['field'])) {
+				$this->field($matches['field']);
+			}
+		}
+	}
+	
+	protected function breakUpString($string) {		
+		$regex = "#((?P<table>\w+)\.)?(?P<field>(?:\w+)|(?:\*+))(\s+as\s+(?P<alias>\w+))?#";	
+		if(preg_match($regex, $string, $matches)) {
+			if(isset($matches['table']) && strlen($matches['table'])) {
+				$this->table($matches['table']);
+			}
+			
 			if(isset($matches['field']) && strlen($matches['field'])) {
 				$this->field($matches['field']);
 			}
@@ -74,6 +125,11 @@ class Field extends Expression {
 	}
 	
 	public function __toString() {
+		
+		if($this->field instanceof Select) {
+			return '('.$this->field.')'.(strlen($this->alias) ? ' AS '.$this->quoteIdentifier($this->alias) : '');
+		}
+		
 		return (strlen($this->table) ? $this->quoteIdentifier($this->byTableByReference($this->table)).'.' : '').$this->quoteIdentifier($this->field).(strlen($this->alias) ? ' AS '.$this->quoteIdentifier($this->alias) : '');
 	}
 	

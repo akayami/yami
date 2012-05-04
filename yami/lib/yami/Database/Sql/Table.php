@@ -7,7 +7,18 @@ class Table extends Expression {
 	protected $alias;
 	
 	public function __construct($definition = null) {
-		$this->parse($definition);
+		if(is_array($definition)) {
+			$this->parse($definition);
+		} else {
+			$this->parse2($definition);
+		}
+	}
+	
+	protected function parse($table) {
+		$this->table($table['table']);
+		if(isset($table['alias'])) {
+			$this->alias($table['alias']['name']);
+		}
 	}
 	
 	/**
@@ -46,7 +57,7 @@ class Table extends Expression {
 		}
 	}
 	
-	protected function parse($string) {
+	protected function parse2($string) {
 		if(preg_match("#(?P<table>\w+)(\s+as\s+(?P<alias>\w+))?#", $string, $matches)) {
 			if(isset($matches['table']) && strlen($matches['table'])) {
 				$this->table($matches['table']);

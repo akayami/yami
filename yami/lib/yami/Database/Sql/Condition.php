@@ -38,7 +38,7 @@ class Condition extends Expression {
 	 * @return \yami\Database\Sql\Condition
 	 */
 	public function field($name) {
-		$this->field = str_replace($this->getIdentifierQuoteCharacter(), '', $name);
+		$this->field = trim($name, $this->getIdentifierQuoteCharacter());//str_replace($this->getIdentifierQuoteCharacter(), '', $name);
 		return $this;
 	}
 	
@@ -47,8 +47,12 @@ class Condition extends Expression {
 		return $this;
 	}
 
-	public function value($name) {
-		$this->value = $name;
+	public function value($expr) {
+		if($expr instanceof Expression) {
+			$this->value = $expr;
+		} else {
+			$this->value = trim($expr, $this->getValueQuoteCharacter());
+		}
 		return $this;
 	}
 	

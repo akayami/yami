@@ -340,6 +340,10 @@
                     $k = $i - 1;
                     $len = strlen($tokens[$i]);
                     while (($k >= 0) && ($len == strlen($tokens[$i]))) {
+                        if (!isset($tokens[$k])) {
+                            $k--;
+                            continue;
+                        }
                         $tokens[$i] = $tokens[$k] . $tokens[$i];
                         unset($tokens[$k]);
                         $k--;
@@ -352,6 +356,10 @@
                     $k = $i + 1;
                     $len = strlen($tokens[$i]);
                     while (($k < $cnt) && ($len == strlen($tokens[$i]))) {
+                        if (!isset($tokens[$k])) {
+                            $k++;
+                            continue;
+                        }
                         $tokens[$i] .= $tokens[$k];
                         unset($tokens[$k]);
                         $k++;
@@ -872,10 +880,10 @@
                 $out['UPDATE'] = $this->process_from($out['UPDATE']);
             }
             if (!empty($out['GROUP'])) {
-                $out['GROUP'] = $this->process_group($out['GROUP'], $out['SELECT']);
+                $out['GROUP'] = $this->process_group($out['GROUP'], (isset($out['SELECT']) ? $out['SELECT'] : array()) );
             }
             if (!empty($out['ORDER'])) {
-                $out['ORDER'] = $this->process_order($out['ORDER'], $out['SELECT']);
+                $out['ORDER'] = $this->process_order($out['ORDER'], (isset($out['SELECT']) ? $out['SELECT'] : array()) );
             }
             if (!empty($out['LIMIT'])) {
                 $out['LIMIT'] = $this->process_limit($out['LIMIT']);
@@ -947,26 +955,42 @@
          then start is set to 0.
          */
         private function process_limit($tokens) {
-            $start = "";
-            $end = "";
+            $rowcount = "";
+            $offset = "";
+            
             $comma = -1;
+            $exchange = false;
 
             for ($i = 0; $i < count($tokens); ++$i) {
-                if (trim($tokens[$i]) === ",") {
+                $trim = trim($tokens[$i]);
+                if ($trim === ",") {
                     $comma = $i;
+                    break;
+                }
+                if ($trim ===  "OFFSET") {
+                    $comma = $i;
+                    $exchange = true;
                     break;
                 }
             }
 
             for ($i = 0; $i < $comma; ++$i) {
-                $start .= $tokens[$i];
+                if ($exchange) {
+                    $rowcount .= $tokens[$i];
+                } else {
+                    $offset .= $tokens[$i];
+                }
             }
 
             for ($i = $comma + 1; $i < count($tokens); ++$i) {
-                $end .= $tokens[$i];
+                if ($exchange) {
+                    $offset .= $tokens[$i];
+                } else {
+                    $rowcount .= $tokens[$i];
+                }
             }
-
-            return array('start' => trim($start), 'end' => trim($end));
+            
+            return array('offset' => trim($offset), 'rowcount' => trim($rowcount));
         }
 
         /* This function processes the SELECT section.  It splits the clauses at the commas.
@@ -1289,14 +1313,16 @@
                 $parseInfo['type'] = 'pos';
             } else {
                 #search to see if the expression matches an alias
-                foreach ($select as $clause) {
-                    if (!$clause['alias']) {
-                        continue;
-                    }
-                    if ($clause['alias']['name'] === $parseInfo['expr']) {
-                        $parseInfo['type'] = 'alias';
-                    }
-                }
+                if(is_array($select)) {
+	                foreach ($select as $clause) {
+	                    if (!$clause['alias']) {
+	                        continue;
+	                    }
+	                    if ($clause['alias']['name'] === $parseInfo['expr']) {
+	                        $parseInfo['type'] = 'alias';
+	                    }
+	                }
+            	}
 
                 if (!$parseInfo['type']) {
                     $parseInfo['type'] = "expression";
@@ -1345,7 +1371,7 @@
             return $out;
         }
 
-        private function process_group(&$tokens, &$select) {
+        private function process_group(&$tokens, $select) {
             $out = array();
             $parseInfo = $this->initParseInfoForOrder();
 
@@ -1835,8 +1861,8 @@
             $holdem = substr($sql, 0, $charPos) . "^" . substr($sql, $charPos);
             echo $spaces . $text . " key:" . $key . "  parsed:" . $parsed . " back:" . serialize($backtracking) . " "
                     . $holdem . "\n";
-        }        
-        
+        }
+
         public function setPositionsWithinSQL($sql, $parsed) {
             $charPos = 0;
             $backtracking = array();
@@ -1910,12 +1936,11 @@
                         || ($key === 'expr_type' && $parsed === 'subquery')
                         || ($key === 'expr_type' && $parsed === 'table_expression')
                         || ($key === 'expr_type' && $parsed === 'record')
-                        || ($key === 'expr_type' && $parsed === 'in-list') 
-                        || ($key === 'alias' && $parsed !== false)) {
+                        || ($key === 'expr_type' && $parsed === 'in-list') || ($key === 'alias' && $parsed !== false)) {
                     # we hold the current position and come back after the next base_expr
                     # we do this, because the next base_expr contains the complete expression/subquery/record
                     # and we have to look into it too
-                    $backtracking[] = $charPos; 
+                    $backtracking[] = $charPos;
 
                 } elseif (($key === 'ref_clause' || $key === 'columns') && $parsed !== false) {
                     # we hold the current position and come back after n base_expr(s)
@@ -1930,7 +1955,7 @@
                     # there is an array of sub-elements after(!) the base_expr clause of the current element
                     # so we go through the sub-elements and must not come back at the end
                     for ($i = 1; $i < count($parsed); $i++) {
-                        $backtracking[] = false; 
+                        $backtracking[] = false;
                     }
                 } else {
                     # move the current pos after the keyword
@@ -1950,7 +1975,7 @@
                 if ($key === 'base_expr') {
 
                     #$this->printPos("0", $sql, $charPos, $key, $value, $backtracking);
-                    
+
                     $subject = substr($sql, $charPos);
                     $pos = $this->findPositionWithinString($subject, $value,
                             isset($parsed['expr_type']) ? $parsed['expr_type'] : 'alias');
@@ -1960,16 +1985,16 @@
 
                     $parsed['position'] = $charPos + $pos;
                     $charPos += $pos + strlen($value);
-                    
+
                     #$this->printPos("1", $sql, $charPos, $key, $value, $backtracking);
-                    
+
                     $oldPos = array_pop($backtracking);
                     if (isset($oldPos) && $oldPos !== false) {
                         $charPos = $oldPos;
                     }
-                    
+
                     #$this->printPos("2", $sql, $charPos, $key, $value, $backtracking);
-                    
+
                 } else {
                     $this->lookForBaseExpression($sql, $charPos, $parsed[$key], $key, $backtracking);
                 }
@@ -2011,6 +2036,6 @@
         }
     }
 
-    //define('HAVE_PHP_SQL_PARSER', 1);
+//    define('HAVE_PHP_SQL_PARSER', 1);
 //}
 

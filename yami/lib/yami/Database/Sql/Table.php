@@ -1,33 +1,69 @@
 <?php
 namespace yami\Database\Sql;
+use yami\Database\Sql\Select;
+use yami\Database\Sql\Expression;
+
 
 class Table extends Expression {
 	
-	protected $table;
-	protected $alias;
+	protected $expressions = array('table', 'subquery');
+	protected $schema;
+	protected $tableName;
+	protected $joinType;
+	protected $refType;
+	protected $refClause = array();
+	protected $isFirst = false;
 	
-	public function __construct($definition = null) {
-		if(is_array($definition)) {
-			$this->parse($definition);
-		} else {
-			$this->parse2($definition);
+	public function __construct($expr = null) {
+		if(is_array($expr)) {
+			if(array_search($expr['expr_type'], $this->expressions) === false) {
+				throw new \Exception('Unknown Expression Type: '.$expr['expr_type'].'. Must be one of: '.implode(', ', $this->expressions));
+			}
+			$this->parse($expr);
 		}
 	}
 	
-	protected function parse($table) {
-		$this->table($table['table']);
-		if(isset($table['alias'])) {
-			$this->alias($table['alias']['name']);
+	protected function parse(array $expr) {
+		//print_r($expr);
+		if(isset($expr['table'])) {
+			$this->parseTableName($expr['table']);
+		}
+		if(isset($expr['ref_type'])) {
+			$this->refType = $expr['ref_type'];
+			$this->joinType = $expr['join_type'];
+			if(isset($expr['ref_clause']) && is_array($expr['ref_clause'])) {					
+				foreach($expr['ref_clause'] as $ref_expr) {
+					switch($ref_expr['expr_type']) {
+						case 'colref':
+							$item = new Field($ref_expr);
+							break;
+						case 'operator':
+							$item = new Operator($ref_expr);
+							break;
+						default:
+							throw new \Exception('Unsuported element type in Join reference clause');
+					}
+					$this->refClause[] = $item; 
+				}				
+			}
+			if(is_array($expr['sub_tree'])) {
+				if($expr['expr_type'] == 'subquery') {
+					$this->refClause[] = new Select($expr['sub_tree']); 
+				}
+			}
+		}
+		if(is_array($expr['alias'])) {
+			$this->setAlias($expr['alias']['name']);		
 		}
 	}
-	
+
 	/**
 	 * 
-	 * @param string $name
+	 * @param string $schema
 	 * @return \yami\Database\Sql\Table
 	 */
-	public function table($name) {
-		$this->table = $name;
+	public function setSchema($schema) {
+		$this->schema = $schema;
 		return $this;
 	}
 	
@@ -36,48 +72,41 @@ class Table extends Expression {
 	 * @param string $name
 	 * @return \yami\Database\Sql\Table
 	 */
-	public function alias($name) {
-		$this->alias = $name;
+	public function setTablename($name) {
+		$this->tableName = $this->trimIdentifier($name);
 		return $this;
 	}
+		
 	
-	public function getTable() {
-		return $this->table;
-	}
-	
-	public function getAlias() {
-		return $this->alias;
-	}
-	
-	public function getIdentifier() {
-		if(isset($this->alias)) {
-			return $this->alias;
-		} else {
-			return $this->table;
+	public function parseTableName($field) {
+		$a = explode('.', $field);
+		switch(count($a)) {			
+			case 2:
+				$this->setSchema($a[0])->setTablename($a[1]);
+				break;
+			case 1:
+				$this->setTablename($a[0]);
+				break;
+			default:
+				throw new \Exception('Unparsable Field Format:'.$field);
 		}
 	}
 	
-	protected function parse2($string) {
-		if(preg_match("#(?P<table>\w+)(\s+as\s+(?P<alias>\w+))?#", $string, $matches)) {
-			if(isset($matches['table']) && strlen($matches['table'])) {
-				$this->table($matches['table']);
-			}
-			if(isset($matches['alias']) && strlen($matches['alias'])) {
-				$this->alias($matches['alias']);
-			}
-		} else{
-			throw new \Exception('Unreadable field format');
-		}
-	}
-	
-	public static function make($name, $alias = null) {
-		$o = new static();
-		$o->table($name);
-		$o->alias($alias);
-		return $o;
+	public function isFirst($isFirst = false) {
+		$this->isFirst = $isFirst;
 	}
 	
 	public function __toString() {
-		return $this->quoteIdentifier($this->table).(strlen($this->alias) ? ' as '.$this->quoteIdentifier($this->alias) : '');
+//		print_r($this->refClause);
+//		print_r($this);
+		$output = (isset($this->schema) ? $this->quoteIdentifier($this->schema).'.' : '').(isset($this->tableName) ? $this->quoteIdentifier($this->tableName) : '');
+		if(!$this->isFirst) {
+			$output = $this->joinType.' '.$output.' '.$this->refType.' ';
+			foreach($this->refClause as $close) {
+				$output .= ($close instanceof Select) ? '('.$close.')' : $close;
+			}
+		}
+		$output = $output.(is_string($this->alias) ? ' AS '.$this->quoteIdentifier($this->alias) : '');
+		return $output;
 	}
 }

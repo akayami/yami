@@ -1,15 +1,14 @@
 <?php
 namespace yami\Database\Sql;
-use yami\Database\Sql\Expression;
 
 class ConditionBlock extends Expression {
-
+	
 	protected $operator = "AND";
 	
 	protected $conditions = array();
 	
 	/**
-	 * 
+	 *
 	 * @param string $operator
 	 */
 	public function __construct($where = null, $operator = "AND") {
@@ -19,29 +18,29 @@ class ConditionBlock extends Expression {
 		}
 	}
 	
-	protected function parse($struc) {
- 		$lastOp = null;
- 		foreach($struc as $chunk) {
- 			switch($chunk['expr_type']) {
-				case 'colref':			
+	public function parse($struc) {
+		$lastOp = null;
+		foreach($struc as $chunk) {
+			switch($chunk['expr_type']) {
+				case 'colref':
 					$cond = new Condition();
-					$cond->field($chunk['base_expr']);
+					$cond->setField(new Field($chunk));
 					break;
 				case 'operator':
 					switch($lastOp) {
 						case 'colref':
-							$cond->operator($chunk['base_expr']);
+							$cond->setOperator(new Operator($chunk));
 							break;
 						case 'const':
 							$this->setLogicalOperator($chunk['base_expr']);
 							break;
 						default:
 							throw new \Exception('unsupported operator context:'.$lastOp);
-			
+								
 					}
 					break;
 				case 'const':
-					$cond->value($chunk['base_expr']);
+					$cond->setValue($chunk['base_expr']);
 					$this->add($cond);
 					break;
 				case 'operator':
@@ -51,14 +50,14 @@ class ConditionBlock extends Expression {
 					$this->add(new ConditionBlock($chunk['sub_tree']));
 					break;
 				case 'subquery':
-					$cond->value(new Select($chunk['sub_tree']));
+					$cond->setValue(new Select($chunk['sub_tree']));
 					$this->add($cond);
 					break;
- 				default:
- 					throw new \Exception('unsuported expression type: '.$chunk['expr_type']);
- 			}
- 			$lastOp = $chunk['expr_type'];
- 		}
+				default:
+					throw new \Exception('unsuported expression type: '.$chunk['expr_type']);
+			}
+			$lastOp = $chunk['expr_type'];
+		}
 	}
 	
 	public function setLogicalOperator($operator) {
@@ -71,9 +70,9 @@ class ConditionBlock extends Expression {
 		}
 		parent::setReference($select);
 	}
-
+	
 	/**
-	 * 
+	 *
 	 * @param mixed $condition
 	 * @return \yami\Database\Sql\ConditionBlock
 	 */
@@ -90,15 +89,6 @@ class ConditionBlock extends Expression {
 	
 	public function __toString() {
 		return '('.implode(' '.$this->operator.' ', $this->conditions).')';
-	}
-	
-	/**
-	 * 
-	 * @param string $operator
-	 * @return \yami\Database\Sql\ConditionBlock
-	 */
-	public static function make($operator = "AND") {
-		return new static($operator);
-	}
+	}	
 	
 }

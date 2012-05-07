@@ -23,7 +23,7 @@ abstract class Collection extends \ArrayIterator {
 	 */
 	public static function select() {
 		$select = new Select(get_called_class());
-		$select->from(static::getTableName());
+		$select->table(static::getTableName())->field('*');
 		return $select;		
 	}
 	

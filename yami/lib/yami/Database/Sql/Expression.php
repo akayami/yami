@@ -2,32 +2,26 @@
 namespace yami\Database\Sql;
 
 class Expression {
-	
-	/**
-	 * 
-	 * @var Select
-	 */
+
 	protected $reference;
-	
 	protected $quoteChr = '`';
+	protected $alias;
+	protected $expr;
 	
-	public function __construct($expression) {
-		$this->expression = $expression;
-	}
-	
-	public function __toString() {
-		return $this->expression;
-	}
-	
+	public function __construct($expr = null) {
+		$this->expr = $expr;
+	}	
+			
 	public function setReference(Select $select) {
 		$this->reference = $select;
 	}
 	
-	public function byTableByReference($argument) {
-		if(isset($this->reference)) {
-			return $this->reference->getTable($argument);
-		}
-		return $argument;
+	public function trimIdentifier($identifier) {
+		return trim($identifier, $this->getIdentifierQuoteCharacter());
+	}
+	
+	public function trimValue($value) {
+		return trim($value, $this->getValueQuoteCharacter());
 	}
 	
 	public function quoteIdentifier($field) {
@@ -45,10 +39,20 @@ class Expression {
 		return "'";
 	}
 	
+	protected function parseAlias(array $expr) {
+		$this->setAlias($expr['base_expr']);
+	}
+	
+	public function setAlias($aliasName) {
+		$this->alias = $this->trimIdentifier($aliasName);
+		return $this;
+	}	
+	
 	public function quote($value) {
 		if($value instanceof Expression) {
 			return "(".$value.")";
 		} else {
+			$value = $this->trimValue($value);
 			if(isset($this->reference)) {
 				return $this->reference->quote($value);
 			} else {
@@ -56,5 +60,8 @@ class Expression {
 			}
 		}
 	}
-		
+	
+	public function __toString() {
+		return $this->expr;
+	}
 }

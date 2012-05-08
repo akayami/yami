@@ -20,7 +20,7 @@ class Select extends sqlSelect {
 	public function execute(array $placeholders = array()) {
 		$this->placeholders = $placeholders;
 		$o = $this->orm;
-		return $o::fetch($this);
+		return $o::load($this);
 	}
 
 	public function getPlaceholders() {

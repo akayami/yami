@@ -18,11 +18,85 @@ class Select extends Expression {
 	public function __construct($query = null) {
 		if(!is_null($query)) {
 			if(is_array($query)) {
-				$this->parse($query);
+				$this->parseStructure($query);
 			} elseif (is_string($query)) {
 				$this->parseString($query);
 			}
 		}		
+	}
+		
+	/**
+	 * 
+	 * @param Order $order
+	 * @return \yami\Database\Sql\Select
+	 */
+	public function addOrder(Order $order) {
+		$this->order[] = $order;
+		return $this;
+	}
+	
+	/**
+	 * 
+	 * @param ConditionExpression $condition
+	 * @return \yami\Database\Sql\Select
+	 */
+	public function addHaving(ConditionExpression $condition) {
+		$this->getHaving()->add($condition);
+		return $this;
+	}
+	
+	/**
+	 * 
+	 * @return ConditionBlock
+	 */
+	public function getHaving() {
+		return (!($this->having instanceof ConditionBlock) ? $this->having = new ConditionBlock() : $this->having);
+	}
+	
+	/**
+	 * Alias for AddAggregate
+	 * 
+	 * @param Aggregate $aggregateField
+	 */
+	public function addGroup(Aggregate $aggregateField) {
+		$this->addAggregate($aggregateField);
+		return $this;	
+	}
+	
+	
+	public function addAggregate(Aggregate $aggregateField) {
+		$this->group[] = $aggregateField;
+	}
+	
+	/**
+	 * 
+	 * @param Limit $limit
+	 * @return \yami\Database\Sql\Select
+	 */
+	public function addLimit(Limit $limit) {
+		$this->limit = $limit;
+		return $this;
+	}
+	
+	/**
+	 * 
+	 * @param int $rowcount
+	 * @param int $offset
+	 * @return \yami\Database\Sql\Select
+	 */
+	public function setLimit($rowcount, $offset = null) {
+		$this->addLimit(new Limit($rowcount, $offset));
+		return $this;
+	}
+	
+	/**
+	 * 
+	 * @param ConditionExpression $c
+	 * @return \yami\Database\Sql\Select
+	 */
+	public function addCondition(ConditionExpression $c) {
+		$this->getWhere()->add($c);
+		return $this;
 	}
 	
 	public function hasLimit() {
@@ -40,8 +114,7 @@ class Select extends Expression {
 	protected function parseString($string) {
 		$parser = new \PHPSQLParser($string);
 		if($parser->parsed) {
-//			print_r($parser->parsed);
-			$this->parse($parser->parsed);
+			$this->parseStructure($parser->parsed);
 		}
 	}
 	
@@ -85,10 +158,7 @@ class Select extends Expression {
 	 */
 	public function where($condition) {		
 		if(is_string($condition)) {
-			$parser = new \PHPSQLParser(' WHERE '.$condition);
-			if($parser->parsed) {
-				$this->parse($parser->parsed);
-			}
+			$this->parseString('WHERE '.$condition);
 		}
 		return $this;
 	}
@@ -166,7 +236,8 @@ class Select extends Expression {
 		return $this;
 	}
 	
-	protected function parse(array $struc) {
+	public function parseStructure(array $struc) {
+
 		if(isset($struc[$this->unionKeywords[0]]) || isset($struc[$this->unionKeywords[1]]) || isset($struc[$this->unionKeywords[2]])) {
 			foreach($struc as $key => $value) {				
 				if(in_array($key, $this->unionKeywords)) {
@@ -191,39 +262,41 @@ class Select extends Expression {
 			}
 		}
 		if(isset($struc['WHERE'])) {
-			if(!($this->where instanceof ConditionBlock)) {
-				$this->where = new ConditionBlock($struc['WHERE']);
-			} else {
-				$this->where->parse($struc['WHERE']);
-			}
+			$this->getWhere()->parseStructure($struc['WHERE']);			
 		}
 		if(isset($struc['GROUP'])) {
 			foreach($struc['GROUP'] as $group) {
-				$this->group[] = new Aggregate($group);
+				$this->group[] = Aggregate::fromStructure($group);
 			}
 		}
 		if(isset($struc['HAVING'])) {
-			$this->having = new ConditionBlock($struc['HAVING']);
+			$this->having = ConditionBlock::fromStructure($struc['HAVING']);
 		}
 		
 		if(isset($struc['ORDER'])) {
 			foreach($struc['ORDER'] as $group) {
-				$this->order[] = new Order($group);
+				$this->order[] = Order::fromStructure($group);//new Order($group);
 			}
 		}
 		if(isset($struc['LIMIT'])) {
-			$this->limit = new Limit($struc['LIMIT']['rowcount'], $struc['LIMIT']['offset']);
+			if(is_numeric($struc['LIMIT']['rowcount']) && (is_numeric($struc['LIMIT']['offset']))) {
+				$this->limit = new Limit($struc['LIMIT']['rowcount'], $struc['LIMIT']['offset']);
+			} elseif(is_numeric($struc['LIMIT']['rowcount'])) {
+				$this->limit = new Limit($struc['LIMIT']['rowcount']);
+			} else {
+				throw new \Exception('Offset not supported without limit (do not ask me why)');
+			}
 		}
 	}
 		
 	protected function processTable(array $item) {
-		return new Table($item);
+		return Table::fromStructure($item);
 	}
 	
 	protected function processField(array $item) {
 		switch($item['expr_type']) {
 			case 'colref':
-				return new Field($item);
+				return Field::fromStructure($item);
 			case 'aggregate_function':
 				return new Func($item);
 			case '':
@@ -238,6 +311,10 @@ class Select extends Expression {
 	public function get($skipLimit = false, $skipOrder = false) {
 		if(is_array($this->union)) {
 			return $this->buildUnion();
+		}
+		//echo (count($this->fields));
+		if(count($this->fields) == 0) {
+			$this->fields[] = new Field('*');
 		}
 		$output = "SELECT ".implode(', ', $this->fields);
 		for($i = 0; $i < count($this->tables); $i++) {

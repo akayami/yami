@@ -14,16 +14,16 @@ class Table extends Expression {
 	protected $refClause = array();
 	protected $isFirst = false;
 	
-	public function __construct($expr = null) {
-		if(is_array($expr)) {
-			if(array_search($expr['expr_type'], $this->expressions) === false) {
-				throw new \Exception('Unknown Expression Type: '.$expr['expr_type'].'. Must be one of: '.implode(', ', $this->expressions));
-			}
-			$this->parse($expr);
-		}
+	public function __construct($tableName = null, $alias = null) {
+		$this->parseTableName($tableName);
+		$this->setAlias($alias);
 	}
 	
-	protected function parse(array $expr) {
+	
+	
+	
+	
+	public function parseStructure(array $expr) {
 		//print_r($expr);
 		if(isset($expr['table'])) {
 			$this->parseTableName($expr['table']);

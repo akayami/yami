@@ -4,17 +4,16 @@ use yami\Database\Sql\Expression;
 
 class Aggregate extends Field {
 	
-	public function __construct($expr = null) {
-		if(is_array($expr)) {
-			if($expr['type'] != 'expression') {
-				throw new \Exception('Unknown Expression Type: '.$expr['type']);
-			}
-			$this->parse($expr);
-		}
+	public function __construct($field = null) {
+		if(strlen($field)) $this->parseFieldName($field);
 	}
 	
-	public function parse($expr) {
+	public function parseStructure(array $expr) {
+		if($expr['type'] != 'expression') {
+			throw new \Exception('Unknown Expression Type: '.$expr['type']);
+		}
 		$this->parseFieldName($expr['base_expr']);
+		
 	}
 	
 }

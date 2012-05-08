@@ -1,7 +1,7 @@
 <?php
 namespace yami\Database\Sql;
 
-class ConditionBlock extends Expression {
+class ConditionBlock extends ConditionExpression {
 	
 	protected $operator = "AND";
 	
@@ -11,25 +11,24 @@ class ConditionBlock extends Expression {
 	 *
 	 * @param string $operator
 	 */
-	public function __construct($where = null, $operator = "AND") {
+	public function __construct($operator = "AND") {
 		$this->setLogicalOperator($operator);
-		if(is_array($where)) {
-			$this->parse($where);
-		}
 	}
 	
-	public function parse($struc) {
+	
+	
+	public function parseStructure(array $struc) {
 		$lastOp = null;
 		foreach($struc as $chunk) {
 			switch($chunk['expr_type']) {
 				case 'colref':
 					$cond = new Condition();
-					$cond->setField(new Field($chunk));
+					$cond->setField(Field::fromStructure($chunk));
 					break;
 				case 'operator':
 					switch($lastOp) {
 						case 'colref':
-							$cond->setOperator(new Operator($chunk));
+							$cond->setOperator(Operator::fromStructure($chunk));
 							break;
 						case 'const':
 							$this->setLogicalOperator($chunk['base_expr']);
@@ -47,7 +46,7 @@ class ConditionBlock extends Expression {
 					$this->setLogicalOperator($chunk['base_expr']);
 					break;
 				case 'expression':
-					$this->add(new ConditionBlock($chunk['sub_tree']));
+					$this->add(ConditionBlock::fromStructure($chunk['sub_tree']));
 					break;
 				case 'subquery':
 					$cond->setValue(new Select($chunk['sub_tree']));
@@ -72,14 +71,14 @@ class ConditionBlock extends Expression {
 	}
 	
 	/**
-	 *
-	 * @param mixed $condition
+	 * 
+	 * @param ConditionExpression $condition
 	 * @return \yami\Database\Sql\ConditionBlock
 	 */
-	public function add($condition) {
-		if(!($condition instanceof Expression)) {
-			$condition = new Condition($condition);
-		}
+	public function add(ConditionExpression $condition) {
+// 		if(!($condition instanceof Expression)) {
+// 			$condition = new Condition($condition);
+// 		}
 		if(!is_null($this->reference)) {
 			$condition->setReference($this->reference);
 		}
@@ -88,7 +87,20 @@ class ConditionBlock extends Expression {
 	}
 	
 	public function __toString() {
-		return '('.implode(' '.$this->operator.' ', $this->conditions).')';
+		$output = '';
+		foreach($this->conditions as $condition) {
+			if($condition instanceof ConditionBlock) {
+				$output .= (strlen($output) > 0 ? ' '.$this->operator.' ' : '').'('.$condition.')';
+			} else {
+				$output .= (strlen($output) > 0 ? ' '.$this->operator.' ' : '').$condition;
+			}
+		}
+		return $output;
+	}
+	
+	public function __toString2() {
+		
+		return '(IN'.implode(' '.$this->operator.' ', $this->conditions).')';
 	}	
 	
 }

@@ -10,7 +10,17 @@ class Expression {
 	
 	public function __construct($expr = null) {
 		$this->expr = $expr;
-	}	
+	}
+	
+	public static function fromStructure(array $expr) {
+		$a = new Static();
+		$a->parseStructure($expr);
+		return $a;
+	}
+	
+	public function parseStructure(array $expr) {
+		
+	}
 			
 	public function setReference(Select $select) {
 		$this->reference = $select;
@@ -44,7 +54,9 @@ class Expression {
 	}
 	
 	public function setAlias($aliasName) {
-		$this->alias = $this->trimIdentifier($aliasName);
+		if(strlen($aliasName) > 0) {
+			$this->alias = $this->trimIdentifier($aliasName);
+		}
 		return $this;
 	}	
 	

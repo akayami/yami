@@ -6,23 +6,21 @@ class Order extends Field {
 	
 	protected $direction = 'ASC';
 	
-	public function __construct($expr = null) {
-		if(is_array($expr)) {
-			if(!in_array($expr['type'], array('expression', 'alias'))) {
-//			if($expr['type'] != 'expression' || $expr['type'] != 'alias') {
-				throw new \Exception('Unknown Expression Type: '.$expr['type']);
-			}
-			$this->parse($expr);
+	public function __construct($fieldName = null, $direction = null) {
+		if(!is_null($fieldName)) $this->parseFieldName($fieldName);
+		if(!is_null($direction)) $this->setDirection($direction);
+	} 
+	
+	public function parseStructure(array $expr) {
+		if(!in_array($expr['type'], array('expression', 'alias'))) {
+			throw new \Exception('Unknown Expression Type: '.$expr['type']);
 		}
-	}
-	
-	protected function parse($expr) {
 		$this->parseFieldName($expr['base_expr']);
-		$this->setDirection($expr['direction']);
+		$this->setDirection($expr['direction']);		
 	}
-	
+		
 	public function setDirection($direction = 'ASC') {
-		if($this->direction == 'ASC') {
+		if(strtoupper($this->direction) == 'ASC') {
 			$this->direction = 'ASC';
 		} else {
 			$this->direction = 'DESC';

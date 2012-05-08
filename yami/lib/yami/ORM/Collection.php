@@ -1,6 +1,10 @@
 <?php
 namespace yami\ORM;
 
+use yami\ORM\Select;
+
+use yami\Database\Sql\Table;
+
 abstract class Collection extends \ArrayIterator {
 
 	protected static $backendMap = array();			// model specific backend stack
@@ -11,19 +15,13 @@ abstract class Collection extends \ArrayIterator {
 	
 	protected $select;
 
-	
-// 	public function __construct($array) {
-// 		parent::__construct($array);
-// 	} 
-	
-
 	/**
 	 * 
 	 * @return \yami\ORM\Select
 	 */
 	public static function select() {
 		$select = new Select(get_called_class());
-		$select->table(static::getTableName())->field('*');
+		$select->addTable(new Table(static::getTableName()));
 		return $select;		
 	}
 	
@@ -55,7 +53,7 @@ abstract class Collection extends \ArrayIterator {
 	}
 
 	
-	protected static function getTableName() {
+	public static function getTableName() {
 		return static::$tableName;
 	}
 	
@@ -67,62 +65,31 @@ abstract class Collection extends \ArrayIterator {
 		return static::$cluster;
 	}
 	
-	
-	public static function getAll($limit = null, $offset = null) {
-		return new static(static::getBackend()->select(
-			static::select()->limit($limit, $offset), 
-			array(static::getTableName() => static::getIds())
-		)->getArrayCopy());
-	}
-	
-// 	public static function getAll($limit = null, $offset = null) {
-// 		return new static(static::getBackend()->select(
-// 			self::getQuery('SELECT * FROM '.static::getTableName(), $limit, $offset), 
-// 			array(static::getTableName() => static::getIds())
-// 		)->getArrayCopy());
-// 	}
-
 	/**
 	 * 
-	 * @param mixed $params
+	 * @param mixed $query
+	 * @param array $placeholders
+	 * @return \yami\Database\Result\CommonResult
+	 */
+	public static function fetch($query, $placeholders = array()) {
+		if($query instanceof Select) {
+			$q = $query;
+		} else {
+			$q = new \yami\Database\Sql\Select($query);
+		}
+		return static::getBackend()->select($q, array(static::getTableName() => static::getIds()));
+	}
+	
+	/**
+	 * 
+	 * @param mixed $query
+	 * @param array $placeholders
 	 * @return \yami\ORM\Collection
 	 */
-	public static function get($params, $placeholders = array()) {
-		if($params instanceof Select) {
-			$q = $params;
-		} else {
-			$q = 'SELECT * FROM '.static::getTableName();
-			if(isset($params['where'])) {
-				$q .= ' WHERE '.implode(' AND ', $params['where']);
-			}
-			if(isset($params['order'])) {
-				$q .= ' ORDER BY '.implode(', ',$params['order']);
-			}
-			if(isset($params['limit'])) {
-				$q .= ' LIMIT '.implode(', ', $params['limit']);
-			}
-		}
-		return new static(static::getBackend()->select(
-			$q, array(static::getTableName() => static::getIds())
-		)->getArrayCopy());
+	public static function load($query, $placeholders = array()) {
+		return new Static(static::fetch($query, $placeholders)->getArrayCopy());
 	}	
-	
-	public static function search($argument = null, $limit = null, $offset = null) {
-		$argument = 123;
-		return new static(static::getBackend()->select($query, $tableIdMap));
-	}
-	
-	private static function getQuery($query, $limit = null, $offset = null) {
-		if($limit != null) {
-			$query .= ' LIMIT '.$limit;
-		}
 		
-		if($offset != null) {
-			$query .= ' OFFSET '.$offset;
-		}
-		return $query;
-	}
-	
 	/**
 	 * Factory to create a model related to this collection
 	 * 

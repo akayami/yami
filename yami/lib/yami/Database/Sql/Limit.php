@@ -7,8 +7,8 @@ class Limit extends Expression {
 	protected $rowcount;
 	
 	public function __construct($rowcount = null, $offset = null) {
-		$this->setRowcount($rowcount);
-		$this->setOffset($offset);
+		if(!is_null($rowcount)) $this->setRowcount($rowcount);
+		if(!is_null($offset)) $this->setOffset($offset);
 	}
 	
 	public function setRowcount($rowcount) {

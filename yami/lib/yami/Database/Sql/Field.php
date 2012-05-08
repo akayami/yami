@@ -8,16 +8,30 @@ class Field extends Expression {
 	protected $field;
 	protected $schema;
 	
-	public function __construct($expr = null) {
-		if(is_array($expr)) {
-			if($expr['expr_type'] != 'colref') {
-				throw new \Exception('Unknown Expression Type: '.$expr['expr_type']);
-			}
-			$this->parse($expr);
+	
+	public function __construct($field = null, $alias = null) {
+		if(!is_null($field)) $this->parseFieldName($field);
+		if(!is_null($alias)) $this->setAlias($alias);
+	}
+	
+// 	public function __construct($expr = null) {
+// 		if(is_array($expr)) {
+// 			if($expr['expr_type'] != 'colref') {
+// 				throw new \Exception('Unknown Expression Type: '.$expr['expr_type']);
+// 			}
+// 			$this->parse($expr);
+// 		}
+// 	}
+	
+	public function parseStructure(array $expr) {
+		$this->parseFieldName($expr['base_expr']);
+		if(isset($expr['alias']) && is_array($expr['alias'])) {
+			$this->parseAlias($expr['alias']);
 		}
 	}
 	
-	protected function parse(array $expr) {
+	
+	public function parse(array $expr) {
 		$this->parseFieldName($expr['base_expr']);
 		if(isset($expr['alias']) && is_array($expr['alias'])) {
 			$this->parseAlias($expr['alias']);

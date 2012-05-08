@@ -1,5 +1,7 @@
 <?php
 namespace yami\ORM;
+use yami\Database\Result\CommonResult;
+
 use yami\ORM\Backend\Exception;
 
 use yami\ORM\Entity;
@@ -72,6 +74,7 @@ abstract class Backend {
 	 * @param array $tableIdMap
 	 * @param string $cluster
 	 * @param boolean $deepLookup
+	 * @return CommonResult
 	 */
 	public function select($query, array $tableIdMap, $cluster = 'default', $deepLookup = false) {
 		if($deepLookup === true && isset($this->childBackend)) {

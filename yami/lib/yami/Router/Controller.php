@@ -39,7 +39,7 @@ class Controller extends Singleton {
 				if($route->isValid($request)) {
 					try {
 						Request::getInstance()->setURI($route->getParams());	// Reading extracted parameters
-						$this->route = $route;						
+						$this->route = $route;
 						return $route->handle();						
 					} catch(\Exception $e) {
 						throw new \Exception('Internal System Error: '.$request.' '.$e->getMessage(), 500, $e);						

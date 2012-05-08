@@ -35,7 +35,8 @@ abstract class Entity extends \ArrayObject {
 	
 	protected function setData(array $data) {
 		foreach($data as $column => $val) {
-			$data[str_replace($this::$tableName.".", '', $column, &$c)] = $val;
+			$c = 0;
+			$data[str_replace($this::$tableName.".", '', $column, $c)] = $val;			
 			if($c > 0) {
 				unset($data[$column]);
 			}

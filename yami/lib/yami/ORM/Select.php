@@ -6,20 +6,16 @@ use yami\Database\Sql\Select as sqlSelect;
 
 class Select extends sqlSelect {
 	
-	protected $orm;
+	protected $handler;
 	protected $placeholders;
 	protected $adapter;
-	
-	public function __construct($ormRefrence) {
-		$this->orm = $ormRefrence;
-	}
-	
+		
 	/**
 	 * 
 	 */
 	public function execute(array $placeholders = array()) {
 		$this->placeholders = $placeholders;
-		$o = $this->orm;
+		$o = $this->handler;
 		return $o::load($this);
 	}
 
@@ -42,5 +38,13 @@ class Select extends sqlSelect {
 	
 	public function setDbAdapter(Adapter $adapter) {
 		$this->adapter = $adapter;			
+	}
+	
+	public function setCollectionName($reference) {
+		$this->handler = $reference;
+	}
+	
+	public function getCollectionName() {
+		return $this->handler;
 	}
 }

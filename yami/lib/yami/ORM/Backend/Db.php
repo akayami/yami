@@ -92,7 +92,7 @@ class Db extends Backend {
 		if($query instanceof Select) {
 			$query->setDbAdapter($h);
 			if($query->hasPlaceholders()) {
-				return $this->getRecordset($h->query($h->pquery_sql($query, $query->getPlaceholders())));
+				return $this->getRecordset($h->pquery($query, $query->getPlaceholders()));
 			}			
 		}
 		return $this->getRecordset($h->query($query));			

@@ -78,9 +78,9 @@ abstract class Backend {
 	 */
 	public function select($query, array $tableIdMap, $cluster = 'default', $deepLookup = false) {
 		if($deepLookup === true && isset($this->childBackend)) {
-			$res = $this->childBackend->select($query, $tableIdMap, $cluster, $deepLookup = false);
+			$res = $this->childBackend->select($query, $tableIdMap, $cluster, $deepLookup);
 		} else {
-			$res = $this->_select($query, $tableIdMap, $cluster, $deepLookup = false);
+			$res = $this->_select($query, $tableIdMap, $cluster, $deepLookup);
 		}
 		return $res;
 	}

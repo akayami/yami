@@ -104,11 +104,11 @@ class Select extends Expression {
 	}
 	
 	public function getLimitValue() {
-		$this->limit->rowcount();
+		return $this->limit->rowcount();
 	}
 	
 	public function getOffsetValue() {
-		$this->limit->offset();
+		return $this->limit->offset();
 	}
 	
 	protected function parseString($string) {
@@ -346,4 +346,50 @@ class Select extends Expression {
 	public function __toString() {
 		return $this->get();
 	}
+	
+	/**
+	 * 
+	 * @return $this;
+	 */
+	public function unsetLimit() {
+		$this->limit = null;
+		return $this;
+	}
+
+	/**
+	 *
+	 * @return \yami\Database\Sql\Select
+	 */
+	public function unsetWhere() {
+		$this->where = null;
+		return $this;
+	}
+	
+	/**
+	 *
+	 * @return \yami\Database\Sql\Select
+	 */
+	public function unsetGroup() {
+		$this->group  = null;
+		return $this;
+	}
+	
+	/**
+	 *
+	 * @return \yami\Database\Sql\Select
+	 */
+	public function unsetHaving() {
+		$this->having  = null;
+		return $this;
+	}
+	
+	/**
+	 *
+	 * @return \yami\Database\Sql\Select
+	 */
+	public function unsetOrder() {
+		$this->order  = null;
+		return $this;
+	}
+	
 }

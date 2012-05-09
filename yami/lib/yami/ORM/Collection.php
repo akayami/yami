@@ -1,6 +1,14 @@
 <?php
 namespace yami\ORM;
 
+use yami\Database\Sql\Operator;
+
+use yami\Database\Sql\ConditionField;
+
+use yami\Database\Sql\Condition;
+
+use yami\Database\Sql\ConditionBlock;
+
 use yami\ORM\Select;
 
 use yami\Database\Sql\Table;
@@ -20,7 +28,8 @@ abstract class Collection extends \ArrayIterator {
 	 * @return \yami\ORM\Select
 	 */
 	public static function select() {
-		$select = new Select(get_called_class());
+		$select = new Select();
+		$select->setCollectionName(get_called_class());
 		$select->addTable(new Table(static::getTableName()));
 		return $select;		
 	}
@@ -71,13 +80,14 @@ abstract class Collection extends \ArrayIterator {
 	 * @param array $placeholders
 	 * @return \yami\Database\Result\CommonResult
 	 */
-	public static function fetch($query, $placeholders = array()) {
+	public static function fetch($query, $placeholders = array(), $deepLook = false) {
 		if($query instanceof Select) {
 			$q = $query;
 		} else {
-			$q = new \yami\Database\Sql\Select($query);
+			$q = new Select($query);
 		}
-		return static::getBackend()->select($q, array(static::getTableName() => static::getIds()));
+		$q->setCollectionName(get_called_class());
+		return static::getBackend()->select($q, array(static::getTableName() => static::getIds()), null, $deepLook);
 	}
 	
 	/**

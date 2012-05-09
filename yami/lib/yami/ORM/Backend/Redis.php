@@ -1,6 +1,14 @@
 <?php
 namespace yami\ORM\Backend;
 
+use yami\Database\Sql\Operator;
+
+use yami\Database\Sql\ConditionField;
+
+use yami\Database\Sql\Condition;
+
+use yami\Database\Sql\ConditionBlock;
+
 use yami\ORM\Entity;
 
 use yami\Redis\Cluster;
@@ -156,7 +164,17 @@ class Redis extends Backend {
 		return $out;
 	}
 	
-	
+	private function parseKey($key) {
+		$keys = explode($this->key_concat, $key);
+		$output = array();
+		foreach($keys as $k) {
+			$d = explode('.', $k);
+			$val = array_pop($d);
+			$key = array_pop($d);
+			$output[$key] = $val;// = array($key => $val);
+		}
+		return $output;
+	}
 	
 	private function getEntityKey($cluster, array $keys, array $row) {
 		$output = array();
@@ -185,7 +203,7 @@ class Redis extends Backend {
 	
 	
 	private function selectRefresh($query, $hash, array $tableIdMap, $cluster = 'default', $deepLookup = false) {
-		$h = $this->backend->master(); // Better master/slave switcher
+		$h = $this->backend->master(); // Better master/slave switcher		
 		$res = $this->childBackend->select($query, $tableIdMap, $cluster, $deepLookup = false);	
 		try {
 			$this->connection->multi();
@@ -213,25 +231,60 @@ class Redis extends Backend {
 	
 	public function _select($query, array $tableIdMap, $cluster = 'default', $deepLookup = false) {
 		$this->connection = $this->backend->master(true);
-		//$this->connection = (isset($this->connection) ? $this->connection : $this->backend->slave());
 		if($query instanceof Select) {	
 			$hash = md5($query->get(true));			
 			if($this->connection->exists($hash)) {
 				if($query->hasLimit()) {
 					$limit = $query->getLimitValue();
-					$offset = $query->getOffsetValue();
+					$offset = $query->getOffsetValue();					
 					$cachedRes = $this->connection->zRange($hash, $offset, $offset + $limit);
 				} else {
 					$cachedRes = $this->connection->zRange($hash, 0, -1);	
 				}
 				if($cachedRes !== false) {
-					foreach($cachedRes as $i => $keys) {
-						$cachedRes[$i] = $this->connection->hGetAll($keys);
+					$missing = array();
+					foreach($cachedRes as $i => $key) {
+						if($this->connection->exists($key)) {
+							$cachedRes[$i] = $this->connection->hGetAll($key);
+						} else {
+							$missing[$i] = $key;
+						}
+					}
+					if(count($missing) > 0) {		# Logic to handle missing records, and put them back into redis
+						$n = clone $query;
+						$n->unsetGroup()->unsetHaving()->unsetLimit()->unsetOrder()->unsetWhere();
+						$n->getWhere()->setLogicalOperator('OR');						
+						foreach($missing as $key) {
+							$parsedKeys = $this->parseKey($key);
+							$cb = new ConditionBlock();
+							foreach($parsedKeys as $col => $val) {
+								$cb->add(new Condition(new ConditionField($col), new Operator('='), $val));
+							}
+							$n->addCondition($cb);
+						}
+						$data = $this->childBackend->query($n, $tableIdMap, $cluster, true);
+						foreach($missing as $resPos => $redisKey) {
+							$orgKey = $redisKey;							
+							$redisKey = explode('.', $redisKey);
+							$id = array_pop($redisKey);
+							$redisKey = implode('.', $redisKey);
+							$this->connection->multi();
+							foreach($data as $record) {
+								if($record[$redisKey] == $id) {
+									$cachedRes[$resPos] = $record;
+									foreach($record as $field => $value) {
+										$this->connection->hSet($orgKey, $field, $value);
+									}
+									error_log('Added missing records to Redis:'.$orgKey);
+								}	
+							}
+							$this->connection->exec();
+						}
 					}
 					return new Recordset($cachedRes);	// Found in cache and successfully retrived 
 				}
 			} else {
-				$cachedRes = $this->connection->zRange($hash, 0, -1);
+				error_log('Not found in redis');
 			}
 			if(isset($this->childBackend)) {
 				$val = $this->selectRefresh($query, $hash, $tableIdMap, $cluster = 'default', $deepLookup = false);

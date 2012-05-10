@@ -1,5 +1,9 @@
 <?php
 namespace yami\ORM;
+use yami\ORM\Backend\Db\UnbufferedRecordset;
+
+use yami\ORM\Backend\Recordset;
+
 use yami\Database\Result\CommonResult;
 
 use yami\ORM\Backend\Exception;
@@ -56,6 +60,47 @@ abstract class Backend {
 			
 	}
 	
+	/**
+	 * 
+	 * @return boolean
+	 */
+	public function unbufferedSupported() {
+		return false;
+	}
+	
+		/**
+	 * 
+	 * @param mixed $query
+	 * @param array $tables
+	 * @param stromg $cluster
+	 * @param boolean $deepLookup
+	 * @return UnbufferedRecordset
+	 */
+	public function unbufferedQuery($query, array $tables, $cluster = 'default', $deepLookup = false) {
+		throw new \Exception('This backend does not support unbuffered requests');
+	}
+	
+	
+	/**
+	 * 
+	 * @param unknown_type $query
+	 * @param array $tableIdMap
+	 * @param unknown_type $cluster
+	 * @param unknown_type $deepLookup
+	 * @return UnbufferedRecordset
+	 */
+	public function unbufferedSelect($query, array $tableIdMap, $cluster = 'default', $deepLookup = false) {
+		throw new \Exception('This backend does not support unbuffered requests');
+	}
+	
+	/**
+	 * 
+	 * @param string $query
+	 * @param array $tables
+	 * @param unknown_type $cluster
+	 * @param unknown_type $deepLookup
+	 * @return Recordset
+	 */
 	public function query($query, array $tables, $cluster = 'default', $deepLookup = false) {
 		if($deepLookup === true && isset($this->childBackend)) {
 			$res = $this->childBackend->query($query, $tables ,$cluster, $deepLookup);
@@ -65,16 +110,14 @@ abstract class Backend {
 		return $res;
 	}
 	
-	protected abstract function _query($query, array $tables, $cluster = 'default', $deepLookup = false);
-	
 	/**
-	 * 
+	 *
 	 * Enter description here ...
 	 * @param string $query
 	 * @param array $tableIdMap
 	 * @param string $cluster
 	 * @param boolean $deepLookup
-	 * @return CommonResult
+	 * @return Recordset
 	 */
 	public function select($query, array $tableIdMap, $cluster = 'default', $deepLookup = false) {
 		if($deepLookup === true && isset($this->childBackend)) {
@@ -84,6 +127,9 @@ abstract class Backend {
 		}
 		return $res;
 	}
+	
+	protected abstract function _query($query, array $tables, $cluster = 'default', $deepLookup = false);
+		
 	
 	/**
 	 * 

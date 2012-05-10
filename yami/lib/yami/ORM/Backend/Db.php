@@ -1,6 +1,8 @@
 <?php
 namespace yami\ORM\Backend;
 
+use yami\ORM\Backend\Db\UnbufferedRecordset;
+
 use yami\ORM\Select;
 
 use yami\Database\Adapter;
@@ -84,29 +86,70 @@ class Db extends Backend {
 	}
 	
 	/**
+	 * Returns a buffered recordset (you can iterate multiple times, but takes a lot of memory)
+	 *
 	 * (non-PHPdoc)
 	 * @see yami\ORM.Backend::_select()
 	 */
-	public function _select($query, array $tableIdMap, $cluster = 'default', $deepLookup = false) {
-		$h = (isset($this->connection) ? $this->connection : $this->connection = $this->backend->slave());
-		if($query instanceof Select) {
-			$query->setDbAdapter($h);
-			if($query->hasPlaceholders()) {
-				return $this->getRecordset($h->pquery($query, $query->getPlaceholders()));
-			}			
-		}
-		return $this->getRecordset($h->query($query));			
+	public function _select($query, array $tableIdMap, $cluster = 'default', $deepLookup = false) {		
+		return $this->getRecordset($this->basicSelect($query, $tableIdMap, $cluster, $deepLookup));			
 	}
 	
 	/**
+	 * Returns a buffered recordset (you can iterate multiple times, but takes a lot of memory)
+	 * 
 	 * (non-PHPdoc)
 	 * @see yami\ORM.Backend::_query()
 	 */
 	protected function _query($query, array $tables, $cluster = 'default', $deepLookup = false) {
-		$h = (isset($this->connection) ? $this->connection : $this->connection = $this->backend->slave());
-		$res = $this->getRecordset($h->query($query));
-		return $res;
+		return $this->getRecordset($this->basicQuery($query, $tables, $cluster, $deepLookup));
 	} 
+	
+	private function basicQuery($query, array $tables, $cluster = 'default', $deepLookup = false) {
+		$h = (isset($this->connection) ? $this->connection : $this->connection = $this->backene());
+		return $h->query($query);
+	}
+	
+	private function basicSelect($query, array $tableIdMap, $cluster = 'default', $deepLookup = false) {
+		$h = (isset($this->connection) ? $this->connection : $this->connection = $this->backend->slave());
+		if($query instanceof Select) {
+			$query->setDbAdapter($h);
+			if($query->hasPlaceholders()) {
+				return $h->pquery($query, $query->getPlaceholders());
+			}
+		}
+		return $h->query($query);
+	}
+	
+	/**
+	 * (non-PHPdoc)
+	 * @see yami\ORM.Backend::unbufferedSupported()
+	 */
+	public function unbufferedSupported() {
+		return true;
+	}
+	
+	/**
+	 * Returns an unbuffered resultset. You can iterate ONCE, but only uses up as much memory as one record would
+	 * Mostly useful for internal usage, caching-ahead and such.
+	 * 
+	 * (non-PHPdoc)
+	 * @see yami\ORM.Backend::unbufferedQuery()
+	 */
+	public function unbufferedQuery($query, array $tables, $cluster = 'default', $deepLookup = false) {		
+		return new UnbufferedRecordset($this->basicQuery($query, $tables, $cluster, $deepLookup));
+	}
+	
+	/**
+	 * Returns an unbuffered resultset. You can iterate ONCE, but only uses up as much memory as one record would
+	 * Mostly useful for internal usage, caching-ahead and such.
+	 * 
+	 * (non-PHPdoc)
+	 * @see yami\ORM.Backend::unbufferedSelect()
+	 */
+	public function unbufferedSelect($query, array $tableIdMap, $cluster = 'default', $deepLookup = false) {
+		return new UnbufferedRecordset($this->basicSelect($query, $tableIdMap, $cluster, $deepLookup));		
+	}
 	
 	/**
 	 * 

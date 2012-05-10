@@ -20,11 +20,7 @@ class Result extends CommonResult {
 	protected $handle;
 	
 	protected $fields;
-	
-	protected $buffer;
-	
-	protected $current;
-	
+		
 	protected $affectedRows;
 	
 	
@@ -40,10 +36,10 @@ class Result extends CommonResult {
 	 */
 	public function fields() {
 		if(!isset($this->fields)) {
-			$this->fields = $this->result->fetch_fields();
-		}
-		foreach($this->fields as $index => $field) {
-			$this->fields[$index] = new Field($field);
+			$this->fields = $this->result->fetch_fields();		
+			foreach($this->fields as $index => $field) {
+				$this->fields[$index] = new Field($field);
+			}
 		}
 		return $this->fields;
 	}
@@ -53,13 +49,7 @@ class Result extends CommonResult {
 	 * @see yami\Database.Result::fetchAll()
 	 */
 	public function fetchAll() {
-		if(!isset($this->buffer)) {
-			$this->buffer = array();
-			while($row = $this->result->fetch_array($this->getFetchMode())) {
-				$this->buffer[] = $row;
-			}
-		}
-		return $this->buffer;
+		return $this->result->fetch_all($this->getFetchMode());
 	}
 	
 	/**
@@ -87,16 +77,7 @@ class Result extends CommonResult {
 	 * @see yami\Database.Result::fetch()
 	 */
 	public function fetch() {
-		if(!isset($this->current)) {
-			$this->current = $this->fetchAll();
-		}
-		$return = current($this->current);
-		if($return == false) {
-			unset($this->current);
-		} else {
-			next($this->current);
-		}
-		return $return;
+		return $this->result->fetch_array($this->getFetchMode());		
 	}
 		
 	/**

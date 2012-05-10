@@ -3,6 +3,10 @@ namespace yami\Database;
 
 interface Result {
 	
+	const FETCH_ASSOC = 1;
+	const FETCH_NUM = 2;
+	const FETCH_BOTH = 3;	
+	
 	/**
 	 * 
 	 * Enter description here ...
@@ -37,5 +41,11 @@ interface Result {
 	 * @return int
 	 */
 	public function affectedRows();
+	
+	
+	/**
+	 * Sets the fetch mode
+	 */
+	public function fetchMode($arg);
 	
 }

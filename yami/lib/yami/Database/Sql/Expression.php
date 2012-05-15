@@ -61,7 +61,9 @@ class Expression {
 	}	
 	
 	public function quote($value) {
-		if($value instanceof Expression) {
+		if($value instanceof Field) {
+			return $value;
+		}elseif($value instanceof Expression) {
 			return "(".$value.")";
 		} else {
 			$value = $this->trimValue($value);

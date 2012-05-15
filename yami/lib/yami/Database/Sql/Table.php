@@ -14,12 +14,21 @@ class Table extends Expression {
 	protected $refClause = array();
 	protected $isFirst = false;
 	
-	public function __construct($tableName = null, $alias = null) {
+	public function __construct($tableName = null, $alias = null, $join = null, Condition $condition = null) {			
 		$this->parseTableName($tableName);
 		$this->setAlias($alias);
+		$this->setJoin($join);
+		$this->refType = 'ON';
+		$this->addJoinCondition($condition);
 	}
 	
+	public function addJoinCondition(Condition $condition = null) {
+		$this->refClause[] = $condition;
+	}
 	
+	public function setJoin($join) {
+		$this->joinType = $join;
+	}
 	
 	
 	
@@ -35,10 +44,10 @@ class Table extends Expression {
 				foreach($expr['ref_clause'] as $ref_expr) {
 					switch($ref_expr['expr_type']) {
 						case 'colref':
-							$item = new Field($ref_expr);
+							$item = Field::fromStructure($ref_expr);
 							break;
 						case 'operator':
-							$item = new Operator($ref_expr);
+							$item = Operator::fromStructure($ref_expr);
 							break;
 						default:
 							throw new \Exception('Unsuported element type in Join reference clause');
@@ -97,16 +106,14 @@ class Table extends Expression {
 	}
 	
 	public function __toString() {
-//		print_r($this->refClause);
-//		print_r($this);
 		$output = (isset($this->schema) ? $this->quoteIdentifier($this->schema).'.' : '').(isset($this->tableName) ? $this->quoteIdentifier($this->tableName) : '');
+		$output = $output.(is_string($this->alias) ? ' AS '.$this->quoteIdentifier($this->alias) : '');
 		if(!$this->isFirst) {
 			$output = $this->joinType.' '.$output.' '.$this->refType.' ';
 			foreach($this->refClause as $close) {
 				$output .= ($close instanceof Select) ? '('.$close.')' : $close;
 			}
 		}
-		$output = $output.(is_string($this->alias) ? ' AS '.$this->quoteIdentifier($this->alias) : '');
 		return $output;
 	}
 }

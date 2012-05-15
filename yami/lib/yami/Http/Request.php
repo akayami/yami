@@ -31,6 +31,15 @@ class Request extends ArrayObject {
 		throw new \Exception('Unserializing is not allowed for singleton:'.get_called_class());
 	}
 	
+	public function queryString(array $replacements = array()) {
+		$d = array_merge($_GET, $replacements);
+		$out = array();
+		foreach($d as $key => $val) {
+			$out[] = $key.'='.urldecode($val);
+		}
+		return htmlentities(implode('&', $out));
+	}
+	
 	/**
 	 * 
 	 * @param string $key

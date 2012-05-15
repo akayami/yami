@@ -27,10 +27,10 @@ class Select extends Expression {
 		
 	/**
 	 * 
-	 * @param Order $order
+	 * @param Expression $order
 	 * @return \yami\Database\Sql\Select
 	 */
-	public function addOrder(Order $order) {
+	public function addOrder(Expression $order) {
 		$this->order[] = $order;
 		return $this;
 	}

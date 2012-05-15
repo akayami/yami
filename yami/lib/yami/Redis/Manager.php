@@ -58,7 +58,6 @@ class Manager {
 			static::$clusters[$cluster] = new Cluster(static::$config[$cluster]);
 			return static::$clusters[$cluster];
 		} else {
-			print_r(static::$config);
 			throw new \Exception('MC Cluster '.$cluster.' not defined!');
 		}
 	}

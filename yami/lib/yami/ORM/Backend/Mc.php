@@ -303,7 +303,7 @@ class Mc extends Backend {
 	}
 	
 	protected function getSelectKey($query) {
-		return hash('md5', $query);
+		return $query->hash();
 	}
 		
 	public function get($key, $table, $ids, $cluster, $deepLookup = false) {

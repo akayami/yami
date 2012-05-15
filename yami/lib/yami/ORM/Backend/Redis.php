@@ -200,56 +200,6 @@ class Redis extends Backend {
 		return $this->getEntityKey($cluster, $keys, $row);		
 	}
 	
-// 	private function selectRefreshAll(Select $query, $hash, array $tableIdMap, $cluster = 'default', $deepLookup = false) {
-// 		$h = $this->backend->master(); // Better master/slave switcher
-// 		$t = $this->flatternTableIdMap($tableIdMap);
-// 		if($this->childBackend->unbufferedSupported()) {
-// 			$c = clone $query;
-// 			$c->unsetLimit();			
-// 			$unBuffRes = $this->childBackend->unbufferedSelect($c, $tableIdMap, $cluster, $deepLookup);
-						
-// 			if($query->hasLimit()) {			
-// 				$end = (int)$query->getOffsetValue() + (int)$query->getLimitValue();
-// 				$start = (int)$query->getOffsetValue();
-// 			} else {
-// 				$start = 0; 
-// 				$end = -1;
-// 			}
-// 			$res = new Recordset();
-// 			$index = 0;
-// 			$this->connection->multi();
-// 			foreach ($unBuffRes as $key => $row) {
-// 				$key = $this->getEntityKey($cluster, $t, $row);
-				
-// 				/**
-// 				 * Add Every Result to Redis list
-// 				 */
-// 				foreach($row as $field => $value) {
-// 					$this->connection->hSet($key, $field, $value);
-// 				}
-// 				$this->connection->zAdd($hash, $index, $key);
-				
-// 				/**
-// 				 * Add results within limtis to return resultset
-// 				 */
-// 				if(($index >= $start && $index < $end) || $end == -1) {
-// 					$res[] = $row;
-// 				}
-// 				if(($index % 1000) === 0) {
-// 					set_time_limit(300);
-// 					error_log('Saved chunk to redis');
-// 					$this->connection->exec();
-// 				}
-// 				$index++;
-// 			}
-// 			$this->connection->exec();
-// 			error_log('DONE ADDING');
-// 		} else {		
-// 			$res = $this->childBackend->select($query, $tableIdMap, $cluster, $deepLookup = false);
-// 		}
-// //		exit;
-// 	}
-	
 	/**
 	 * Cacheing routine that looks ahead 5 pages to recache values
 	 * 
@@ -260,26 +210,31 @@ class Redis extends Backend {
 	 * @param boolean $deepLookup
 	 */
 	private function selectRefresh(Select $query, $hash, array $tableIdMap, $cluster = 'default', $deepLookup = false) {
-		$pagesAheadMultiplier = 5;
+		$pagesAheadMultiplier = 3;
 		$h = $this->backend->master(); // Better master/slave switcher
 		$t = $this->flatternTableIdMap($tableIdMap);
-		if($this->childBackend->unbufferedSupported()) {
+//		if($this->childBackend->unbufferedSupported()) {
 			$c = clone $query;
 			if($query->hasLimit()) {			
 				$end = (int)$query->getOffsetValue() + (int)$query->getLimitValue();
 				$start = (int)$query->getOffsetValue();
+				$c->setLimit((int)$query->getLimitValue() * $pagesAheadMultiplier,  (int)$query->getOffsetValue());
+				$index = $query->getOffsetValue();
 			} else {
 				$start = 0; 
 				$end = -1;
+				$index = 0;
 			}
-			$c->setLimit((int)$query->getLimitValue() * $pagesAheadMultiplier,  (int)$query->getOffsetValue());
-			$unBuffRes = $this->childBackend->unbufferedSelect($c, $tableIdMap, $cluster, $deepLookup);
 			$res = new Recordset();
-			$index = $query->getOffsetValue();
+			if($this->childBackend->unbufferedSupported()) {
+				$childRes = $this->childBackend->unbufferedSelect($c, $tableIdMap, $cluster, $deepLookup);
+			} else {
+				$childRes = $this->childBackend->Select($c, $tableIdMap, $cluster, $deepLookup);
+			}
 			$count = 0;
 			error_log("Start Index:".$index);
 			$this->connection->multi();
-			foreach ($unBuffRes as $key => $row) {
+			foreach ($childRes as $key => $row) {
 				$key = $this->getEntityKey($cluster, $t, $row);
 				
 				/**
@@ -304,9 +259,11 @@ class Redis extends Backend {
 				$index++;
 				$count++;
 			}
-			if((int)$count < (int)$query->getLimitValue()) {
+			if($query->hasLimit() == true && ((int)$count < (int)$query->getLimitValue())) {
 				$this->connection->set($hash.'_count', ($query->getOffsetValue() + $count));				
 				error_log('Max Count reached:'. ($query->getOffsetValue() + $count));
+			} elseif($query->hasLimit() === false) {
+				$this->connection->set($hash.'_count', count($count));
 			}
 			$this->connection->exec();
 			error_log('DONE ADDING');
@@ -314,47 +271,22 @@ class Redis extends Backend {
 				$this->addRelatedSets($table, $hash);
 				$this->addRelatedSets($table, $hash.'_count');
 			}
-		} else {
-			$res = $this->childBackend->select($query, $tableIdMap, $cluster, $deepLookup = false);
-		}
+// 		} else {
+// 			$res = $this->childBackend->select($query, $tableIdMap, $cluster, $deepLookup = false);
+// 		}
 		return $res;
 		
 	}
 	
-// 	private function selectRefreshStd($query, $hash, array $tableIdMap, $cluster = 'default', $deepLookup = false) {
-// 		$h = $this->backend->master(); // Better master/slave switcher
-// 		$res = $this->childBackend->select($query, $tableIdMap, $cluster, $deepLookup = false);
-		
-// 		try {
-// 			$this->connection->multi();
-// 			$t = $this->flatternTableIdMap($tableIdMap);
-// 			foreach($res as $index => $row) {		
-// 				$key = $this->getEntityKey($cluster, $t, $row);
-// 				foreach($row as $field => $value) {					
-// 					$this->connection->hSet($key, $field, $value);					
-// 				}
-				
-// 				$this->connection->zAdd($hash, $index, $key);
-// 			}
-// 			if($out = $this->connection->exec() === false) {
-// 				throw new \Exception('Failed to safe into Redis.:'.print_r($out, true));
-// 			}
-// 			foreach($tableIdMap as $table => $crap) {
-// 				$this->addRelatedSets($table, $hash);
-// 			}
-// 		} catch(\Exception $e) {
-// 			$this->connection->discard();
-// 			throw $e;
-// 		}		
-// 		return $res;
-// 	}
-	
 	public function _select($query, array $tableIdMap, $cluster = 'default', $deepLookup = false) {
+		$totalCount = null;
 		$this->connection = $this->backend->master(true);
-		if($query instanceof Select) {	
-			$hash = md5($query->get(true));
+		if($query instanceof Select) {
+			$hash = $query->hash(true);
 			if($this->connection->exists($hash)) {
-			//if($this->connection->exists($hash) && false) {
+				if($this->connection->exists($hash.'_count')) {
+					$totalCount = $this->connection->get($hash.'_count');
+				}
 				if($query->hasLimit()) {
 					$limit = $query->getLimitValue();
 					$offset = $query->getOffsetValue();					
@@ -368,10 +300,10 @@ class Redis extends Backend {
 			 			} else {
 			 				error_log('Result is the end of list');
 			 			}					
-					} 
-					//print_r($cachedRes);exit;					
+					} 			
 				} else {
-					$cachedRes = $this->connection->zRangeByScore($hash, 0, -1);	
+					error_log('No LIMIT. Getting All');
+					$cachedRes = $this->connection->zRange($hash, 0, -1);	
 				}				
 				if($cachedRes !== false) {
 					$missing = array();
@@ -413,7 +345,7 @@ class Redis extends Backend {
 							$this->connection->exec();
 						}
 					}
-					return new Recordset($cachedRes);	// Found in cache and successfully retrived 
+					return new Recordset($cachedRes, $totalCount);	// Found in cache and successfully retrived 
 				}
 			} else {
 				error_log('Not found in redis');

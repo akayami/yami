@@ -389,7 +389,7 @@ class Redis extends Backend {
 	}
 	
 	
-	public function _query(Select $query, array $ids, $count = false, $cluster = 'default', $deepLookup = false) {
+	public function _query($query, array $tables, $cluster = 'default', $deepLookup = false) {
 		$this->connection = $this->backend->master(true);
 		$hash = $this->getSelectKey($query);
 		if($this->connection->exists($hash)) {
@@ -403,9 +403,6 @@ class Redis extends Backend {
 			$data = serialize($res->getArrayCopy());
 			$this->connection = $this->backend->master(true);
 			if(($setResult = $this->connection->set($hash, $data)) !== true) {
-				//error_log('Failed to add '.$hash.' to redis');
-				var_dump($setResult);
-				//throw new \Exception('Failed to add '.$hash.' to redis');
 				throw new \Exception('Failed to add '.$hash.' to redis');
 			}
 			foreach($tables as $table) {

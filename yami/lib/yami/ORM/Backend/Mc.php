@@ -75,12 +75,12 @@ class Mc extends Backend {
 		
 	}
 	
-	protected function _query(Select $query, array $ids, $count = false, $cluster = 'default', $deepLookup = false) {
+	protected function _query($query, array $tables, $cluster = 'default', $deepLookup = false) {
 		$hash = $this->getSelectKey($query);
 		$mcRes = $this->handle->get($hash);
 		if($this->handle->getResultCode() != \Memcached::RES_SUCCESS) {
 			if(isset($this->childBackend)) {
-				$res = $this->childBackend->query($query, $ids, $cluster, $deepLookup);
+				$res = $this->childBackend->query($query, $tables, $cluster, $deepLookup);
 				$this->handle->set($hash, $res->getArrayCopy());
 				if($this->handle->getResultCode() != \Memcached::RES_SUCCESS) {
 					error_log('Failed to add '.$hash);

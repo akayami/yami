@@ -34,6 +34,10 @@ abstract class Collection extends \ArrayIterator {
 		parent::__construct((is_array($array) ? $array : array()));		
 	}
 	
+	public static function getAll() {
+		return static::select()->execute();
+	}
+	
 	/**
 	 * 
 	 * @param array $key Hash of keys

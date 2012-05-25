@@ -89,8 +89,9 @@ class Db extends Backend {
 	 * (non-PHPdoc)
 	 * @see yami\ORM.Backend::_query()
 	 */
-	protected function _query(Select $query, array $ids, $count = false, $cluster = 'default', $deepLookup = false) {
-		return $this->_select($query, $ids, $count, $cluster, $deepLookup);		
+	protected function _query($query, array $tables, $cluster = 'default', $deepLookup = false) {
+		return new Recordset($this->basicQuery($query)->fetchAll());
+//		return $this->_select($query, $tables, $cluster, $deepLookup);		
 	}
 	
 	/**
@@ -131,6 +132,11 @@ class Db extends Backend {
 		return $this->getRecordset($this->basicQuery($query), $ids);
 	} 
 	
+	/**
+	 * 
+	 * @param unknown_type $query
+	 * @return CommonResult
+	 */
 	private function basicQuery($query) {
 		$h = (isset($this->connection) ? $this->connection : $this->connection = $this->backend->slave());
 		if($query instanceof Select) {
@@ -217,19 +223,8 @@ class Db extends Backend {
 		}		
 		$h = (isset($this->connection) ? $this->connection : $this->connection = $this->backend->slave());
 		$q = 'SELECT * FROM '.$table.' WHERE '.$this->getIdentifierWhere($ids, $h);
-		try {			
-			$res = $h->pquery($q, $aId);
-			$res->fetchMode($res::FETCH_NUM);
-			$fields = $res->fields();
-			if($row = $res->fetch()) {				
-				$out = array();
-				foreach($row as $key => $val) {
-					$out[$fields[$key]->identifier()] = $val;
-				}
-				return $out;
-			} else {
-				throw new Exception('Unable to return');
-			}
+		try {
+			return $h->pquery($q, $aId)->fetch();			
 		} catch(Exception $e) {
 			throw new Exception('noitemfound', 'Requested item was not found', null, $e);
 		}

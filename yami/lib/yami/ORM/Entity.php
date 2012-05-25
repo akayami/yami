@@ -178,8 +178,7 @@ abstract class Entity extends \ArrayObject {
 	 * @throws Exception
 	 */
 	protected function _byId($id) {
-		$this->exchangeArray(array());
-		$this->setData(static::_byId_Routine($id));
+		$this->exchangeArray(static::_byId_Routine($id));
 	}
 	
 	/**

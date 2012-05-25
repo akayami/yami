@@ -96,18 +96,17 @@ abstract class Backend {
 	
 	/**
 	 * 
-	 * @param Select $query
-	 * @param array $ids
-	 * @param mixed $count 			- possible values: false = no count, 1 = force count, 2 = try count (if cached already or if retrived less results than requested, count will be returned)
+	 * @param string $query
+	 * @param array $tables
 	 * @param string $cluster
 	 * @param boolean $deepLookup
 	 * @return Recordset
 	 */
-	public function query(Select $query, array $ids, $count = false, $cluster = 'default', $deepLookup = false) {
+	public function query($query, array $tables, $cluster = 'default', $deepLookup = false) {
 		if($deepLookup === true && isset($this->childBackend)) {
-			$res = $this->childBackend->query($query, $ids, $count, $cluster, $deepLookup);
+			$res = $this->childBackend->query($query, $tables, $cluster, $deepLookup);
 		} else {
-			$res = $this->_query($query, $ids, $count, $cluster, $deepLookup);
+			$res = $this->_query($query, $tables, $cluster, $deepLookup);
 		}
 		return $res;
 	}
@@ -132,13 +131,12 @@ abstract class Backend {
 	
 	/**
 	 * 
-	 * @param Select $query
+	 * @param string $query
 	 * @param array $ids
-	 * @param mixed $count 			- possible values: false = no count, 1 = force count, 2 = try count (if cached already or if retrived less results than requested, count will be returned)
 	 * @param string $cluster
 	 * @param boolean $deepLookup
 	 */
-	abstract protected function _query(Select $query, array $ids, $count = false, $cluster = 'default', $deepLookup = false);
+	abstract protected function _query($query, array $tables, $cluster = 'default', $deepLookup = false);
 		
 	
 	/**

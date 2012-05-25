@@ -46,7 +46,7 @@ class Mysqli extends Abstr {
 		$res = $this->handle->query($query);
 		if(is_bool($res)) {
 			if($res === false) {
-				throw new \Exception($this->handle->error);
+				throw new \Exception($this->handle->error.":".$query);
 			}
 			return $res;
 		}
@@ -67,10 +67,31 @@ class Mysqli extends Abstr {
 		$this->handle->autocommit(true);
 	}
 
-	public function quote($string) {
-		return "'".$this->handle->real_escape_string($string)."'";
+	/**
+	 * (non-PHPdoc)
+	 * @see yami\Database.Adapter::escape()
+	 */
+	public function escape($string) {
+		return $this->handle->real_escape_string($string);
+	}
+	
+	
+	/**
+	 * (non-PHPdoc)
+	 * @see yami\Database.Adapter::quote()
+	 */
+	public function quote($string, $escape = true) {
+		if($escape) {
+			return "'".$this->escape($string)."'";
+		} else {
+			return "'".$string."'";
+		}
 	}
 
+	/**
+	 * (non-PHPdoc)
+	 * @see yami\Database\Adapter.Abstr::quoteIdentifier()
+	 */
 	public function quoteIdentifier($string) {
 		return '`'.$string.'`';
 	}

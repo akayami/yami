@@ -19,10 +19,7 @@ class UnbufferedRecordset implements \Iterator {
 	
 	public function __construct(Result $result) {
 		$this->result = $result;
-		error_log("Fetching Field List");		
 		$this->fields = $this->result->fields();
-		error_log("DONE: Fetching Field List");
-//		print_r($this->fields);
 	}
 	
 	/**
@@ -34,25 +31,34 @@ class UnbufferedRecordset implements \Iterator {
 	}
 	
 	private function _current() {
-		// echo "\n".__METHOD__."\n";
-		$row = $this->result->fetch();
-		if(is_null($row) === true) {
+		$this->current = $this->result->fetch();
+		if(is_null($this->current) === true) {
 			$this->current = false;
 			return;
 		}
-		$out = array();
- 		foreach($row as $key => $val) {
- 			$out[$this->fields[$key]->identifier()] = $val;
- 		}
- 		$this->current = $out;
 		$this->position++;
 	}
+	
+// 	private function _current() {
+// 		// echo "\n".__METHOD__."\n";
+// 		$row = $this->result->fetch();
+// 		if(is_null($row) === true) {
+// 			$this->current = false;
+// 			return;
+// 		}
+// 		$out = array();
+//  		foreach($row as $key => $val) {
+//  			$out[$this->fields[$key]->identifier()] = $val;
+//  		}
+//  		$this->current = $out;
+// 		$this->position++;
+// 	}
 	
 	public function rewind() {
 		// echo "\n".__METHOD__."\n";
 		$this->position = 0;
 		$c = $this->result; // --  SUCKS
-		$this->result->fetchMode($c::FETCH_NUM);
+		$this->result->fetchMode($c::FETCH_ASSOC);
 		$this->_current();
 	}
 	

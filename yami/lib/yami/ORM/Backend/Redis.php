@@ -158,7 +158,7 @@ class Redis extends Backend {
 		$out = array();
 		foreach($tableIdMap as $key => $val) {
 			foreach($val as $id) {
-				$out[] = $key.'.'.$id;
+				$out[] = $id;
 			}
 		}
 		return $out;
@@ -209,34 +209,39 @@ class Redis extends Backend {
 	 * @param string $cluster
 	 * @param boolean $deepLookup
 	 */
-	private function selectRefresh(Select $query, $hash, array $tableIdMap, $cluster = 'default', $deepLookup = false) {
+	private function selectRefresh(Select $query, $hash, array $ids, $count = false, $cluster = 'default', $deepLookup = false) {
+		//print_r($ids);
 		$pagesAheadMultiplier = 3;
-		$h = $this->backend->master(); // Better master/slave switcher
-		$t = $this->flatternTableIdMap($tableIdMap);
-//		if($this->childBackend->unbufferedSupported()) {
-			$c = clone $query;
-			if($query->hasLimit()) {			
-				$end = (int)$query->getOffsetValue() + (int)$query->getLimitValue();
-				$start = (int)$query->getOffsetValue();
-				$c->setLimit((int)$query->getLimitValue() * $pagesAheadMultiplier,  (int)$query->getOffsetValue());
-				$index = $query->getOffsetValue();
-			} else {
-				$start = 0; 
-				$end = -1;
-				$index = 0;
-			}
-			$res = new Recordset();
-			if($this->childBackend->unbufferedSupported()) {
-				$childRes = $this->childBackend->unbufferedSelect($c, $tableIdMap, $cluster, $deepLookup);
-			} else {
-				$childRes = $this->childBackend->Select($c, $tableIdMap, $cluster, $deepLookup);
-			}
-			$count = 0;
-			error_log("Start Index:".$index);
+		$flippedIds = array_flip($ids);
+		//$t = $this->flatternTableIdMap($tableIdMap);
+		$c = clone $query;
+		if($query->hasLimit()) {			
+			$end = (int)$query->getOffsetValue() + (int)$query->getLimitValue();
+			$start = (int)$query->getOffsetValue();
+			$c->setLimit((int)$query->getLimitValue() * $pagesAheadMultiplier,  (int)$query->getOffsetValue());
+			$index = $query->getOffsetValue();
+		} else {
+			$start = 0; 
+			$end = -1;
+			$index = 0;
+		}
+		$res = new Recordset();
+		if($this->childBackend->unbufferedSupported()) {
+			//error_log('Unbuffered');
+			$childRes = $this->childBackend->unbufferedSelect($c, $ids, $cluster, $deepLookup);
+		} else {
+			//error_log('Buffered');
+			$childRes = $this->childBackend->Select($c, $ids, false, $cluster, $deepLookup);
+		}
+		//print_r($childRes);exit;
+		$count = 0;
+		//error_log("Start Index:".$index);
+		$serialIndex = 0;
+		try {
 			$this->connection->multi();
-			foreach ($childRes as $key => $row) {
-				$key = $this->getEntityKey($cluster, $t, $row);
-				
+			foreach ($childRes as $i => $row) {
+				$key = $this->getEntityKey($cluster, $ids, $row);
+				//error_log("Rds Key:".$key);
 				/**
 				 * Add Every Result to Redis list
 				 */
@@ -249,11 +254,13 @@ class Redis extends Backend {
 				 * Add results within limtis to return resultset
 				 */
 				if(($index >= $start && $index < $end) || $end == -1) {
-					$res[] = $row;
+					$res[$serialIndex] = $row;
+					$res->idRecordMap[implode('.', array_intersect_key($row, $flippedIds))] = $serialIndex;
+					$serialIndex++;
 				}
 				if(($index % 10000) === 0) {
 					set_time_limit(300);
-					error_log('Saved chunk to redis');
+					//error_log('Saved chunk to redis');
 					$this->connection->exec();
 				}
 				$index++;
@@ -261,55 +268,65 @@ class Redis extends Backend {
 			}
 			if($query->hasLimit() == true && ((int)$count < (int)$query->getLimitValue())) {
 				$this->connection->set($hash.'_count', ($query->getOffsetValue() + $count));				
-				error_log('Max Count reached:'. ($query->getOffsetValue() + $count));
 			} elseif($query->hasLimit() === false) {
 				$this->connection->set($hash.'_count', count($count));
 			}
 			$this->connection->exec();
-			error_log('DONE ADDING');
-			foreach($tableIdMap as $table => $crap) {
+			foreach($query->getTableNamesList() as $table) {
 				$this->addRelatedSets($table, $hash);
 				$this->addRelatedSets($table, $hash.'_count');
 			}
-// 		} else {
-// 			$res = $this->childBackend->select($query, $tableIdMap, $cluster, $deepLookup = false);
-// 		}
+		} catch(\RedisException $e) {
+			//error_log('Redis Failure:'.$e->getMessage());
+			$index = 0;
+			foreach ($childRes as $key => $row) {
+				if(($index >= $start && $index < $end) || $end == -1) {
+					$res[] = $row;
+				}
+				$index++;
+			}
+		}
 		return $res;
 		
 	}
 	
-	public function _select($query, array $tableIdMap, $cluster = 'default', $deepLookup = false) {
+	public function _select(Select $query, array $ids, $count = false, $cluster = 'default', $deepLookup = false) {
+		$hash = $query->hash(true);
+		$flippedIds = array_flip($ids);
 		$totalCount = null;
-		$this->connection = $this->backend->master(true);
-		if($query instanceof Select) {
-			$hash = $query->hash(true);
+		$this->connection = $this->backend->master(true);			
+		try {
+
 			if($this->connection->exists($hash)) {
 				if($this->connection->exists($hash.'_count')) {
 					$totalCount = $this->connection->get($hash.'_count');
 				}
+				$recordSet = new Recordset(array(), $totalCount);
 				if($query->hasLimit()) {
 					$limit = $query->getLimitValue();
 					$offset = $query->getOffsetValue();					
 					$cachedRes = $this->connection->zRangeByScore($hash, $offset, $offset + $limit - 1);
 			 		if(count($cachedRes) != $limit) {
-			 			$count = $this->connection->get($hash.'_count');
-			 			if(!(is_numeric($count) && ($offset + $limit) >= $count)) {
-			 				error_log(($offset + $limit).'!='.$count);
-							error_log('Result Size Discrepency - Need to look below to see if there are more results:'.count($cachedRes).' - '.$limit);
+			 			$countVal = $this->connection->get($hash.'_count');
+			 			if(!(is_numeric($countVal) && ($offset + $limit) >= $countVal)) {
+// 			 				error_log(($offset + $limit).'!='.$countVal);
+// 							error_log('Result Size Discrepency - Need to look below to see if there are more results:'.count($cachedRes).' - '.$limit);
 							$cachedRes = false;
-			 			} else {
-			 				error_log('Result is the end of list');
-			 			}					
+			 			} 
+// 			 			else {
+// 			 				error_log('Result is the end of list');
+// 			 			}					
 					} 			
 				} else {
-					error_log('No LIMIT. Getting All');
+					//error_log('No LIMIT. Getting All:'.$query);
 					$cachedRes = $this->connection->zRange($hash, 0, -1);	
 				}				
 				if($cachedRes !== false) {
 					$missing = array();
 					foreach($cachedRes as $i => $key) {
 						if($this->connection->exists($key)) {
-							$cachedRes[$i] = $this->connection->hGetAll($key);
+							$recordSet[$i] = $this->connection->hGetAll($key);
+							$recordSet->idRecordMap[implode('.', array_intersect_key($recordSet[$i], $flippedIds))] = $i;
 						} else {
 							$missing[$i] = $key;
 						}
@@ -326,7 +343,7 @@ class Redis extends Backend {
 							}
 							$n->addCondition($cb);
 						}
-						$data = $this->childBackend->query($n, $tableIdMap, $cluster, true);
+						$data = $this->childBackend->query($n, $ids, false, $cluster, true);
 						foreach($missing as $resPos => $redisKey) {
 							$orgKey = $redisKey;							
 							$redisKey = explode('.', $redisKey);
@@ -335,34 +352,44 @@ class Redis extends Backend {
 							$this->connection->multi();
 							foreach($data as $record) {
 								if($record[$redisKey] == $id) {
-									$cachedRes[$resPos] = $record;
+
+									$recordSet[$resPos] = $record;
+									$recordSet->idRecordMap[implode('.', array_intersect_key($recordSet[$resPos], $flippedIds))] = $resPos;
+										
+									
+									//$cachedRes[$resPos] = $record;
 									foreach($record as $field => $value) {
 										$this->connection->hSet($orgKey, $field, $value);
 									}
-									error_log('Added missing records to Redis:'.$orgKey);
+									//error_log('Added missing records to Redis:'.$orgKey);
 								}	
 							}
 							$this->connection->exec();
 						}
 					}
-					return new Recordset($cachedRes, $totalCount);	// Found in cache and successfully retrived 
+					return $recordSet;
+					//print_r($cachedRes);
+					//return new Recordset($cachedRes, $totalCount);	// Found in cache and successfully retrived 
 				}
-			} else {
-				error_log('Not found in redis');
-			}
-			if(isset($this->childBackend)) {
-				$val = $this->selectRefresh($query, $hash, $tableIdMap, $cluster = 'default', $deepLookup = false);
-				return $val;
-			} else {
-				return null;
-			}				
-		} else {
-			throw new Exception('Handling non-objectified query not implemented yet');
+			} 
+// 			else {
+// 				error_log('Not found in redis');
+// 			}
+		} catch(\RedisException $e) {
+			error_log('Redis Failed:'.$e->getMessage());
+		} catch(\Exception $e) {
+			error_log('Regular Exception Failed:'.$e->getMessage());
 		}
+		if(isset($this->childBackend)) {
+			$val = $this->selectRefresh($query, $hash, $ids, $count, $cluster, $deepLookup);
+			return $val;
+		} else {
+			return null;
+		}				
 	}
 	
 	
-	public function _query($query, array $tables, $cluster = 'default', $deepLookup = false) {
+	public function _query(Select $query, array $ids, $count = false, $cluster = 'default', $deepLookup = false) {
 		$this->connection = $this->backend->master(true);
 		$hash = $this->getSelectKey($query);
 		if($this->connection->exists($hash)) {

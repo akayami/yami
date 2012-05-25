@@ -80,7 +80,19 @@ interface Adapter {
 	 */
 	public function isMaster();
 	
+	/**
+	 * 
+	 * @param string $value 	// Quote a value like a string
+	 * @param boolena $escape	// Also escape the value
+	 * @return $string
+	 */
+	public function quote($value, $escape = true);
 	
-	public function quote($value);
+	/**
+	 * 
+	 * @param string $value
+	 * @return $string
+	 */
+	public function escape($value);
 
 }

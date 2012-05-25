@@ -19,10 +19,11 @@ abstract class Entity extends \ArrayObject {
 	
 	public function __construct($data = null, $masterValues = false) {
 		
+		
 		if(is_object($data)) {
-			$this->setData($data->getArrayCopy());
+			parent::__construct($data->getArrayCopy());
 		} elseif (is_array($data)) {
-			$this->setData($data);
+			parent::__construct($data);
 		} else {
 			if(!is_null($data)) {
 				$this->_byId($data);
@@ -31,17 +32,6 @@ abstract class Entity extends \ArrayObject {
 		if($masterValues === true) {
 			$this->update(true);
 		}
-	}
-	
-	protected function setData(array $data) {
-		foreach($data as $column => $val) {
-			$c = 0;
-			$data[str_replace($this::$tableName.".", '', $column, $c)] = $val;			
-			if($c > 0) {
-				unset($data[$column]);
-			}
-		}
-		parent::__construct($data);
 	}
 		
 	public static function getStructure() {

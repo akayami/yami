@@ -1,6 +1,8 @@
 <?php
 namespace yami\ORM\Backend;
 
+use yami\ORM\Select;
+
 use yami\ORM\Entity;
 
 use yami\ORM\Backend;
@@ -73,17 +75,17 @@ class Mc extends Backend {
 		
 	}
 	
-	protected function _query($query, array $tables, $cluster = 'default', $deepLookup = false) {
+	protected function _query(Select $query, array $ids, $count = false, $cluster = 'default', $deepLookup = false) {
 		$hash = $this->getSelectKey($query);
 		$mcRes = $this->handle->get($hash);
 		if($this->handle->getResultCode() != \Memcached::RES_SUCCESS) {
 			if(isset($this->childBackend)) {
-				$res = $this->childBackend->query($query, $tables, $cluster, $deepLookup);
+				$res = $this->childBackend->query($query, $ids, $cluster, $deepLookup);
 				$this->handle->set($hash, $res->getArrayCopy());
 				if($this->handle->getResultCode() != \Memcached::RES_SUCCESS) {
 					error_log('Failed to add '.$hash);
 				}
-				foreach($tables as $table) {
+				foreach($query->getTableNamesList() as $table) {
 					$this->addRelatedSets($table, $hash);
 				}
 				return $res;
@@ -95,94 +97,67 @@ class Mc extends Backend {
 		}
 	}
 	
-	/**
-	 * 
-	 * @param string $query
-	 * @param string $hash
-	 * @param array $tableIdMap
-	 * @param string $cluster
-	 * @param boolean $deepLookup
-	 * @throws \Exception
-	 * @return Recordset
-	 */
-	private function selectRefresh($query, $hash, array $tableIdMap, $cluster = 'default', $deepLookup = false) {
-		$res = $this->childBackend->select($query, $tableIdMap, $cluster, $deepLookup = false); // Get Full Resultset from DB
-		$explodedRes = $this->explodeFromResultSet($res);
-		$sets = array();
+	private function selectRefresh(Select $query, $hash, array $ids, $count = false, $count_hash = null, $cluster = 'default', $deepLookup = false) {
+		$tables = $query->getTableNamesList();
+		$table = $tables[0];
 		$keyRecordSet = array();
-		foreach($explodedRes as $table => $data) {
-			foreach($data as $index => $row) {
-				$keyVals = array();
-				if(isset($tableIdMap[$table])) {
-					foreach($tableIdMap[$table] as $id) {
-						if(isset($row[$id])) {
-							$keyVals[] = $row[$id];
-								
-							if(!isset($keyRecordSet[$table])) {
-								$keyRecordSet[$table] = array();
-							}
-							if(!isset($keyRecordSet[$table][$index])) {
-								$keyRecordSet[$table][$index] = array();
-							}
-							$keyRecordSet[$table][$index][$id] = $row[$id];
-		
-						} else {
-							throw new \Exception('Provided id '.$id.' is missing in the query output. Mismatched table structure?');
-						}
-					}
-				}
-				$sets[$this->prepareKey($keyVals, $table, (isset($tableIdMap[$table]) ? $tableIdMap[$table] : null), $cluster)] = $row;
+		$res = $this->childBackend->select($query, $ids, $count, $cluster, $deepLookup = false); // Get Full Resultset from DB
+		$ids = array_flip($ids);		
+		if($res) {
+			$sets = array();						
+			foreach($res as $key => $row) {
+				$keyVals = array_intersect_key($row, $ids);
+				$rowKey = $this->prepareKey($keyVals, $table, $ids, $cluster);
+				//error_log($rowKey);				
+				$sets[$rowKey] = $row;
+				//$res[$key] = $rowKey;
+				$keyRecordSet[$key] = $rowKey; 
 			}
-			$this->addRelatedSets($table, $hash);
+			$data = array_merge(array($hash => $keyRecordSet), $sets);
+			if($count !== false) {
+				$data[$count_hash] = $res->totalCount;
+			}
+			if(!$this->handle->setMulti($data)) {
+				error_log('MC Failed:'.$this->handle->getResultMessage());
+			}
+			foreach(array_keys($data) as $key) {
+				$this->addRelatedSets($table, $key);
+			}
 		}
-		
-		/**
-		 * @todo Investigate if this loop is nessesary. It looks like the addRelatedSets is executed above and should not be required
-		 */
-		foreach($tableIdMap as $table => $crap) {
-			$this->addRelatedSets($table, $hash);
-		}
-		$sets[$hash] = $keyRecordSet;
-		$this->handle->setMulti($sets);
-		return $res;		
+		return $res;
 	}
 		
-	protected function _select($query, array $tableIdMap, $cluster = 'default', $deepLookup = false) {
+	protected function _select(Select $query, array $ids, $count = false, $cluster = 'default', $deepLookup = false) {
 		$hash = $this->getSelectKey($query);
-		$mcRes = $this->handle->get($hash);
-		if($this->handle->getResultCode() != \Memcached::RES_SUCCESS) {
+		$hash_c = $query->hash(true, true).'_count';
+		$multiRes = $this->handle->getMulti(array($hash, $hash_c));
+		if($this->handle->getResultCode() != \Memcached::RES_SUCCESS || !isset($multiRes[$hash]) || ($count !== false ? !isset($multiRes[$hash_c]) : false)) {
 			if(isset($this->childBackend)) {
-				return $this->selectRefresh($query, $hash, $tableIdMap, $cluster, $deepLookup);
+				return $this->selectRefresh($query, $hash, $ids, $count, $hash_c, $cluster, $deepLookup);
 			} else {
 				return null;
 			}
 		} else {
-			$gets = array();
-			$reassamble = array();
-			foreach($mcRes as $table => $rows) {				
-				foreach($rows as $index => $row) {
-					$itemKey = $this->prepareKey(array_values($row), $table, array_keys($row), $cluster);
-					$gets[] = $itemKey;
-					$mcRes[$table][$index] = $itemKey;
-				}
-			}
-			$cached = $this->handle->getMulti($gets);
-		
-			$missing = array_keys(array_diff_key(array_flip($gets), (is_array($cached) ? $cached : array())));			
-			if($missing) {
+			//error_log('Full MC:'.$count);
+			
+			$mcRes = (isset($multiRes[$hash]) ? $multiRes[$hash] : array());
+			$cachedCount = (isset($multiRes[$hash_c]) ? $multiRes[$hash_c] : null);
+			$cached = $this->handle->getMulti($mcRes);
+			$missing = array_keys(array_diff_key(array_flip($mcRes), (is_array($cached) ? $cached : array())));			
+			if($missing || ($count !== false && is_null($cachedCount))) {
+				error_log('Some Missing - Recaching');
 				/**
 				 * @todo Add a better way of cacheing missing items. Right now, one missing item triggers the whole query
 				 */
-				return $this->selectRefresh($query, $hash, $tableIdMap, $cluster, $deepLookup);
-				//return $this->_select($query, $tableIdMap, $cluster, true);
+				return $this->selectRefresh($query, $hash, $ids, (is_null($cachedCount) ? 1 : false), $hash_c, $cluster, $deepLookup);
+				//return $this->_select($query, $ids, $cluster, true);
 			}
-			
-			foreach($mcRes as $table => $rows) {				
-				foreach($rows as $index => $row) {
-					$mcRes[$table][$index] = $cached[$mcRes[$table][$index]];					 		
-				}
-			}
-			return $this->implodeIntoResultSet($mcRes);
+			$res = new Recordset(array(), $cachedCount);
+ 			foreach($mcRes as $key => $p) {
+ 				$res[$key] = $cached[$p];
+ 				$res->idRecordMap[implode('.', array_intersect_key($cached[$p], array_flip($ids)))] = $key;
+ 			}			
+			return $res;
 		}
 	}
 		
@@ -413,14 +388,14 @@ class Mc extends Backend {
 		}
 	}
 	
-	protected function prepareKey($key, $table, $ids, $cluster) {
-		if(!is_array($ids)) {
-			$ids = array($ids);
-		}
+	protected function prepareKey($key, $table, $ids, $cluster = 'default') {
+// 		if(!is_array($ids)) {
+// 			$ids = array($ids);
+// 		}
 		if(!is_array($key)) {
 			$key = array($key);
 		}
-		return $cluster.'.'.$table.'.'.implode($this->key_concat, $ids).'.'.implode($this->key_concat, $key);
+		return $cluster.'.'.$table.'.'.implode($this->key_concat, array_flip($ids)).'.'.implode($this->key_concat, $key);
 	}
 	
 	protected function disassembleKey($key) {

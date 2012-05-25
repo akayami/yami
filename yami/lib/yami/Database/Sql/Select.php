@@ -14,17 +14,38 @@ class Select extends Expression {
 	protected $union;
 	protected $unionKeywords = array('UNION', 'UNION ALL', 'UNION DISTINCT');
 	protected $unionToken;
+	protected $options = array();
+	public $structure;
 	
 	public function __construct($query = null) {
 		if(!is_null($query)) {
 			if(is_array($query)) {
+//				print_r($query);
 				$this->parseStructure($query);
 			} elseif (is_string($query)) {
 				$this->parseString($query);
 			}
 		}		
 	}
-		
+	
+	public function getTableNamesList() {
+		$out = array();
+		foreach($this->tables as /* @var Table */ $table) {
+			$out[] = $table->getTablename();
+		}
+		return $out;
+	}
+	
+	/**
+	 * 
+	 * @param string $option
+	 * @return \yami\Database\Sql\Select
+	 */
+	public function addQueryOption($option) {
+		$this->options[] = $option;
+		return $this;
+	}
+	
 	/**
 	 * 
 	 * @param Expression $order
@@ -112,10 +133,10 @@ class Select extends Expression {
 	}
 	
 	protected function parseString($string) {
-		$parser = new \PHPSQLParser($string);
-		if($parser->parsed) {
-			$this->parseStructure($parser->parsed);
-		}
+		$this->structure = new \PHPSQLParser($string);
+		if($this->structure->parsed) {
+			$this->parseStructure($this->structure->parsed);
+		}		
 	}
 	
 	/**
@@ -237,7 +258,6 @@ class Select extends Expression {
 	}
 	
 	public function parseStructure(array $struc) {
-
 		if(isset($struc[$this->unionKeywords[0]]) || isset($struc[$this->unionKeywords[1]]) || isset($struc[$this->unionKeywords[2]])) {
 			foreach($struc as $key => $value) {				
 				if(in_array($key, $this->unionKeywords)) {
@@ -251,6 +271,11 @@ class Select extends Expression {
 			}
 			return;
 		}
+		if(isset($struc['OPTIONS'])) {
+			foreach($struc['OPTIONS'] as $option) {
+				$this->options[] = $option;
+			}
+		}
 		if(isset($struc['SELECT'] )) {
 			foreach($struc['SELECT'] as $item) {
 				$this->addField($this->processField($item));
@@ -261,6 +286,7 @@ class Select extends Expression {
 				$this->addTable($this->processTable($item));
 			}
 		}
+		
 		if(isset($struc['WHERE'])) {
 			$this->getWhere()->parseStructure($struc['WHERE']);			
 		}
@@ -279,14 +305,9 @@ class Select extends Expression {
 			}
 		}
 		if(isset($struc['LIMIT'])) {
-			if(is_numeric($struc['LIMIT']['rowcount']) && (is_numeric($struc['LIMIT']['offset']))) {
-				$this->limit = new Limit($struc['LIMIT']['rowcount'], $struc['LIMIT']['offset']);
-			} elseif(is_numeric($struc['LIMIT']['rowcount'])) {
-				$this->limit = new Limit($struc['LIMIT']['rowcount']);
-			} else {
-				throw new \Exception('Offset not supported without limit (do not ask me why)');
-			}
+			$this->limit = new Limit((isset($struc['LIMIT']['rowcount']) ? $struc['LIMIT']['rowcount'] : null), (isset($struc['LIMIT']['offset']) ? $struc['LIMIT']['offset'] : null));			
 		}
+		return $this;
 	}
 		
 	protected function processTable(array $item) {
@@ -294,11 +315,13 @@ class Select extends Expression {
 	}
 	
 	protected function processField(array $item) {
-		switch($item['expr_type']) {
+		switch($item['expr_type']) {		
 			case 'colref':
 				return Field::fromStructure($item);
 			case 'aggregate_function':
 				return new Func($item);
+			case 'subquery':				
+				return new Select($item);
 			case '':
 				return new Expression('');
 		}
@@ -316,7 +339,8 @@ class Select extends Expression {
 		if(count($this->fields) == 0) {
 			$this->fields[] = new Field('*');
 		}
-		$output = "SELECT ".implode(', ', $this->fields);
+		$output = "SELECT ".implode(',', $this->options).' '.implode(', ', $this->fields);
+		//print_r($this->tables);exit;
 		for($i = 0; $i < count($this->tables); $i++) {
 			$table = $this->tables[$i];
 			if($i ==0) {
@@ -345,6 +369,15 @@ class Select extends Expression {
 	
 	public function __toString() {
 		return $this->get();
+	}
+	
+	/**
+	 * 
+	 * @return \yami\Database\Sql\Select
+	 */
+	public function unsetTable() {
+		$this->tables = array();
+		return $this;
 	}
 	
 	/**
@@ -389,6 +422,11 @@ class Select extends Expression {
 	 */
 	public function unsetOrder() {
 		$this->order  = null;
+		return $this;
+	}
+	
+	public function unsetQueryOption() {
+		$this->options = null;
 		return $this;
 	}
 	

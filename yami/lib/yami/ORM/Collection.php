@@ -1,6 +1,8 @@
 <?php
 namespace yami\ORM;
 
+use yami\Database\Adapter\Mysqli\Field;
+
 use yami\ORM\Backend\Recordset;
 
 use yami\Database\Sql\Operator;
@@ -35,28 +37,31 @@ abstract class Collection extends \ArrayIterator {
 	/**
 	 * 
 	 * @param array $key Hash of keys
+	 * @return boolean
 	 */
 	public function containsKey(array $key) {
-		if(!isset($this->map)) $this->mapById();
-		ksort($tmp);
-		$key = implode('.', $tmp);
-		return isset($this->map[$key]);	
+		return isset($this->map[implode('.', $key)]);
 	}
 	
 	/**
 	 * 
 	 * @param array $key Hash of keys
+	 * @return array
 	 * @throws \Exception
 	 */
 	public function fetchByKey(array $key) {
-		if(!isset($this->map)) $this->mapById();
-		ksort($key);
-		$key = implode('.', $key);
-		if(!isset($this->map[$key])) {
-			return false;
-			//throw new \Exception('Item '.$key.' not available');
+		if(isset($this->map[implode('.', $key)])) {
+			return $this[$this->map[implode('.', $key)]];
 		} else {
-			return $this[$this->map[$key]];
+			throw new \Exception('Item not found:'.implode('.', $key));			
+		}
+	}
+	
+	public function getIndexByKey(array $key) {
+		if(isset($this->map[implode('.', $key)])) {
+			return $this->map[implode('.', $key)];
+		} else {
+			throw new \Exception('Item not found:'.implode('.', $key));
 		}
 	}
 	
@@ -88,10 +93,16 @@ abstract class Collection extends \ArrayIterator {
 	 * 
 	 * @return \yami\ORM\Select
 	 */
-	public static function select() {
-		$select = new Select();
-		$select->setCollectionName(get_called_class());
-		$select->addTable(new Table(static::getTableName()));
+	public static function select($string = null) {
+		if(is_null($string)) {
+			$select = new Select();
+			$select->setCollectionName(get_called_class());
+			$select->addTable(new Table(static::getTableName()));
+			$select->addField(new \yami\Database\Sql\Field('*', null, static::getTableName()));
+		} else {
+			$select = new Select($string);
+			$select->setCollectionName(get_called_class());
+		}
 		return $select;		
 	}
 	
@@ -139,29 +150,36 @@ abstract class Collection extends \ArrayIterator {
 	 * 
 	 * @param mixed $query
 	 * @param array $placeholders
+	 * @param mixed $count 			- possible values: false = no count, 1 = force count, 2 = try count (if cached already or if retrived less results than requested, count will be returned) 
 	 * @return Recordset
 	 */
-	public static function fetch($query, $placeholders = array(), $deepLook = false) {
+	public static function fetch($query, $placeholders = null, $count = false, $deepLook = false) {
 		if($query instanceof Select) {
 			$q = $query;
 		} else {
 			$q = new Select($query);
+		}		
+		if(!is_null($placeholders)) {
 			$q->setPlaceholders($placeholders);
 		}
 		$q->setCollectionName(get_called_class());
-		return static::getBackend()->select($q, array(static::getTableName() => static::getIds()), null, $deepLook);
+//		print_r($q->getTableNamesList());
+		return static::getBackend()->select($q, static::getIds(), $count, 'default', $deepLook);
+		//return static::getBackend()->select($q, array(static::getTableName() => static::getIds()), 'default', $deepLook);
 	}
 	
 	/**
 	 * 
 	 * @param mixed $query
 	 * @param array $placeholders
+	 * @param mixed $count		- possible values: false = no count, 1 = force count, 2 = try count (if cached already or if retrived less results than requested, count will be returned)
 	 * @return \yami\ORM\Collection
 	 */
-	public static function load($query, $placeholders = array(), $deepLook = false) {
-		$recordset = static::fetch($query, $placeholders);
+	public static function load($query, $placeholders = null, $count = false, $deepLook = false) {
+		$recordset = static::fetch($query, $placeholders, $count, $deepLook);
 		$n = new Static($recordset->getArrayCopy());
-		$n->setCount($recordset->count);
+		$n->map = $recordset->idRecordMap;
+		$n->setCount($recordset->totalCount);
 		return $n;
 	}	
 		
@@ -172,29 +190,48 @@ abstract class Collection extends \ArrayIterator {
 	 */
 	abstract public function getEntity(array $data);
 	
- 	public function current() {
- 		$data = parent::current();
- 		if($data instanceof Entity) {
- 			return $data;
- 		} else {
- 			if(!is_array($data)) {
- 				var_dump($data);exit;
- 			}
- 			$this[parent::key()] = $this->getEntity($data);
- 		}
- 		return $this[parent::key()];
- 	} 
- 	
+	public function current() {
+		$data = parent::current();
+		if($data instanceof Entity) {
+			return $data;
+		} else {
+			$this[parent::key()] = $this->getEntity($data);
+		}
+		return $this[parent::key()];
+	}
+	 	
  	public function offsetGet($index) {
  		$data = parent::offsetGet($index);
  		if($data instanceof Entity) {
  			return $data;
  		} else {
- 			if(!is_array($data)) {
- 				var_dump($data);exit;
- 			}
  			$this[$index] = $this->getEntity($data);
  		}
  		return $this[$index];
+ 	}
+
+ 	
+ 	public function fetchIds() {
+ 		$ids = static::$ids;
+ 		parent::rewind();
+ 		$out = array();
+ 		while(parent::valid()) {
+ 			$c = parent::current();
+ 			foreach($ids as $id) {
+ 				$out[$id][] = $c[$id];
+ 			}
+ 			parent::next();
+ 		}
+ 		return $out;
+ 	}
+ 	
+ 	
+ 	public function hasPosition($position) {
+ 		return ($this->count() - 1 >= $position);
+ 	}
+ 	
+ 	public function getByIndexPosition($position) {
+ 		$keys = array_keys($this->getArrayCopy());
+ 		return $this[$keys[0]];
  	}
 }

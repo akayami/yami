@@ -12,17 +12,17 @@ class Limit extends Expression {
 	}
 	
 	public function setRowcount($rowcount) {
-		if(!is_numeric($rowcount)) throw new \Exception('Rowcount must be numeric: '.$rowcount);
+//		if(!is_numeric($rowcount)) throw new \Exception('Rowcount must be numeric: '.$rowcount);
 		$this->rowcount = $rowcount;
 	}
 	
 	public function setOffset($offset) {
-		if(!is_numeric($offset)) throw new \Exception('Offset must be numeric: '.$offset);
+//		if(!is_numeric($offset)) throw new \Exception('Offset must be numeric: '.$offset);
 		$this->offset = $offset;
 	}
 	
 	public function __toString() {
-		return (!is_null($this->rowcount) ? ' LIMIT '.$this->rowcount.(!is_null($this->offset) ? ' OFFSET '.$this->offset : '') : '');
+		return (!is_null($this->rowcount) ? ' LIMIT '.$this->rowcount.(strlen($this->offset) > 0 ? ' OFFSET '.$this->offset : '') : '');
 	}
 	
 	public function rowcount() {

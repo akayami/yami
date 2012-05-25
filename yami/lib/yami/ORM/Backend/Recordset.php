@@ -3,11 +3,11 @@ namespace yami\ORM\Backend;
 
 class Recordset extends \ArrayObject {
 	
-	public $count;
+	public $totalCount;
+	public $idRecordMap;
 	
 	public function __construct(array $data = array(), $totalCount = null) {
 		parent::__construct($data);
-		$this->count = $totalCount;
+		$this->totalCount = $totalCount;
 	}
-	
 }

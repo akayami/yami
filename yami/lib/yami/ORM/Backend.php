@@ -1,5 +1,6 @@
 <?php
 namespace yami\ORM;
+
 use yami\ORM\Backend\Db\UnbufferedRecordset;
 
 use yami\ORM\Backend\Recordset;
@@ -70,76 +71,86 @@ abstract class Backend {
 	
 		/**
 	 * 
-	 * @param mixed $query
+	 * @param Select $query
 	 * @param array $tables
-	 * @param stromg $cluster
+	 * @param string $cluster
 	 * @param boolean $deepLookup
 	 * @return UnbufferedRecordset
 	 */
-	public function unbufferedQuery($query, array $tables, $cluster = 'default', $deepLookup = false) {
+	public function unbufferedQuery(Select $query, array $tables, $cluster = 'default', $deepLookup = false) {
 		throw new \Exception('This backend does not support unbuffered requests');
 	}
 	
 	
 	/**
 	 * 
-	 * @param unknown_type $query
-	 * @param array $tableIdMap
-	 * @param unknown_type $cluster
-	 * @param unknown_type $deepLookup
+	 * @param Select $query
+	 * @param array $ids
+	 * @param string $cluster
+	 * @param boolean $deepLookup
 	 * @return UnbufferedRecordset
 	 */
-	public function unbufferedSelect($query, array $tableIdMap, $cluster = 'default', $deepLookup = false) {
+	public function unbufferedSelect(Select $query, array $ids, $cluster = 'default', $deepLookup = false) {
 		throw new \Exception('This backend does not support unbuffered requests');
 	}
 	
 	/**
 	 * 
-	 * @param string $query
-	 * @param array $tables
-	 * @param unknown_type $cluster
-	 * @param unknown_type $deepLookup
-	 * @return Recordset
-	 */
-	public function query($query, array $tables, $cluster = 'default', $deepLookup = false) {
-		if($deepLookup === true && isset($this->childBackend)) {
-			$res = $this->childBackend->query($query, $tables ,$cluster, $deepLookup);
-		} else {
-			$res = $this->_query($query, $tables, $cluster, $deepLookup);
-		}
-		return $res;
-	}
-	
-	/**
-	 *
-	 * Enter description here ...
-	 * @param string $query
-	 * @param array $tableIdMap
+	 * @param Select $query
+	 * @param array $ids
+	 * @param mixed $count 			- possible values: false = no count, 1 = force count, 2 = try count (if cached already or if retrived less results than requested, count will be returned)
 	 * @param string $cluster
 	 * @param boolean $deepLookup
 	 * @return Recordset
 	 */
-	public function select($query, array $tableIdMap, $cluster = 'default', $deepLookup = false) {
+	public function query(Select $query, array $ids, $count = false, $cluster = 'default', $deepLookup = false) {
 		if($deepLookup === true && isset($this->childBackend)) {
-			$res = $this->childBackend->select($query, $tableIdMap, $cluster, $deepLookup);
+			$res = $this->childBackend->query($query, $ids, $count, $cluster, $deepLookup);
 		} else {
-			$res = $this->_select($query, $tableIdMap, $cluster, $deepLookup);
+			$res = $this->_query($query, $ids, $count, $cluster, $deepLookup);
 		}
 		return $res;
 	}
 	
-	protected abstract function _query($query, array $tables, $cluster = 'default', $deepLookup = false);
+	/**
+	 * 
+	 * @param Select $query
+	 * @param array $ids
+	 * @param mixed $count 			- possible values: false = no count, 1 = force count, 2 = try count (if cached already or if retrived less results than requested, count will be returned)
+	 * @param string $cluster
+	 * @param boolean $deepLookup
+	 * @return Recordset
+	 */
+	public function select(Select $query, array $ids, $count = false, $cluster = 'default', $deepLookup = false) {
+		if($deepLookup === true && isset($this->childBackend)) {
+			$res = $this->childBackend->select($query, $ids, $count, $cluster, $deepLookup);
+		} else {
+			$res = $this->_select($query, $ids, $count, $cluster, $deepLookup);
+		}
+		return $res;
+	}
+	
+	/**
+	 * 
+	 * @param Select $query
+	 * @param array $ids
+	 * @param mixed $count 			- possible values: false = no count, 1 = force count, 2 = try count (if cached already or if retrived less results than requested, count will be returned)
+	 * @param string $cluster
+	 * @param boolean $deepLookup
+	 */
+	abstract protected function _query(Select $query, array $ids, $count = false, $cluster = 'default', $deepLookup = false);
 		
 	
 	/**
 	 * 
 	 * Enter description here ...
-	 * @param string $query
-	 * @param array $tableIdMap
+	 * @param Select $query
+	 * @param array $ids
+	 * @param mixed $count 			- possible values: false = no count, 1 = force count, 2 = try count (if cached already or if retrived less results than requested, count will be returned)
 	 * @param string $cluster
 	 * @param boolean $deepLookup
 	 */
-	abstract protected function _select($query, array $tableIdMap, $cluster = 'default', $deepLookup = false);
+	abstract protected function _select(Select $query, array $ids, $count = false, $cluster = 'default', $deepLookup = false);
 	
 	/**
 	 * 

@@ -26,16 +26,16 @@ class Select extends sqlSelect {
 	 * @param array $placeholders
 	 * @return Collection
 	 */
-	public function execute(array $placeholders = array()) {
+	public function execute(array $placeholders = array(), $deepLook = false) {
 		$this->placeholders = $placeholders;
 		$o = $this->handler;
-		return $o::load($this);
+		return $o::load($this, $placeholders, $deepLook);
 	}
 	
 	public function generate(array $placeholders = array()) {
 		$this->placeholders = $placeholders;
 		$o = $this->handler;
-		return $o::fetch($this);
+		return $o::fetch($this, $placeholders, $deepLook);
 	}
 	
 	public function setPlaceholders(array $phs) {

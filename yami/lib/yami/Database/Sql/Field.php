@@ -9,9 +9,10 @@ class Field extends Expression {
 	protected $schema;
 	
 	
-	public function __construct($field = null, $alias = null) {
+	public function __construct($field = null, $alias = null, $tableName = null) {
 		if(!is_null($field)) $this->parseFieldName($field);
 		if(!is_null($alias)) $this->setAlias($alias);
+		if(!is_null($tableName)) $this->setTable($tableName);
 	}
 	
 // 	public function __construct($expr = null) {

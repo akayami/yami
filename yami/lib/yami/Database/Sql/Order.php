@@ -18,6 +18,15 @@ class Order extends Field {
 		$this->parseFieldName($expr['base_expr']);
 		$this->setDirection($expr['direction']);		
 	}
+	
+	public function parseFieldName($string) {
+		if(trim(strtoupper($string)) == 'RAND()') {
+			$this->field = new Expression('RAND()');
+			return $this;
+		}
+		parent::parseFieldName($string);
+		return $this;
+	}
 		
 	public function setDirection($direction = 'ASC') {
 		if(strtoupper($this->direction) == 'ASC') {
@@ -25,6 +34,7 @@ class Order extends Field {
 		} else {
 			$this->direction = 'DESC';
 		}
+		return $this;
 	}
 	
 	public function __toString() {

@@ -86,13 +86,39 @@ class Db extends Backend {
 	}
 	
 	/**
+	 * (non-PHPdoc)
+	 * @see yami\ORM.Backend::_query()
+	 */
+	protected function _query(Select $query, array $ids, $count = false, $cluster = 'default', $deepLookup = false) {
+		return $this->_select($query, $ids, $count, $cluster, $deepLookup);		
+	}
+	
+	/**
+	 * (non-PHPdoc)
+	 * @see yami\ORM.Backend::_select()
+	 */
+	protected function _select(Select $query, array $ids, $count = false, $cluster = 'default', $deepLookup = false) {
+		if($count !== false) {
+			$query->addQueryOption('SQL_CALC_FOUND_ROWS');
+		}
+		$data = $this->basicQuery($query);		
+		$recset = $this->getRecordset($data, $ids);
+		if($count !== false) {
+			$c = $this->basicQuery("SELECT FOUND_ROWS() as c");
+			$row = $c->fetch();
+			$recset->totalCount = $row['c'];
+		}
+		return $recset;
+	}
+	
+	/**
 	 * Returns a buffered recordset (you can iterate multiple times, but takes a lot of memory)
 	 *
 	 * (non-PHPdoc)
 	 * @see yami\ORM.Backend::_select()
 	 */
-	public function _select($query, array $tableIdMap, $cluster = 'default', $deepLookup = false) {		
-		return $this->getRecordset($this->basicSelect($query, $tableIdMap, $cluster, $deepLookup));			
+	public function _select2(Select $query, array $ids, $cluster = 'default', $deepLookup = false) {
+		return $this->getRecordset($this->basicSelect($query), $ids);			
 	}
 	
 	/**
@@ -101,16 +127,11 @@ class Db extends Backend {
 	 * (non-PHPdoc)
 	 * @see yami\ORM.Backend::_query()
 	 */
-	protected function _query($query, array $tables, $cluster = 'default', $deepLookup = false) {
-		return $this->getRecordset($this->basicQuery($query, $tables, $cluster, $deepLookup));
+	protected function _query2(Select $query, array $ids, $cluster = 'default', $deepLookup = false) {
+		return $this->getRecordset($this->basicQuery($query), $ids);
 	} 
 	
-	private function basicQuery($query, array $tables, $cluster = 'default', $deepLookup = false) {
-		$h = (isset($this->connection) ? $this->connection : $this->connection = $this->backene());
-		return $h->query($query);
-	}
-	
-	private function basicSelect($query, array $tableIdMap, $cluster = 'default', $deepLookup = false) {
+	private function basicQuery($query) {
 		$h = (isset($this->connection) ? $this->connection : $this->connection = $this->backend->slave());
 		if($query instanceof Select) {
 			$query->setDbAdapter($h);
@@ -119,6 +140,10 @@ class Db extends Backend {
 			}
 		}
 		return $h->query($query);
+	}
+	
+	private function basicSelect($query) {
+		return $this->basicQuery($query);
 	}
 	
 	/**
@@ -136,7 +161,7 @@ class Db extends Backend {
 	 * (non-PHPdoc)
 	 * @see yami\ORM.Backend::unbufferedQuery()
 	 */
-	public function unbufferedQuery($query, array $tables, $cluster = 'default', $deepLookup = false) {		
+	public function unbufferedQuery(Select $query, array $tables, $cluster = 'default', $deepLookup = false) {		
 		return new UnbufferedRecordset($this->basicQuery($query, $tables, $cluster, $deepLookup));
 	}
 	
@@ -147,30 +172,23 @@ class Db extends Backend {
 	 * (non-PHPdoc)
 	 * @see yami\ORM.Backend::unbufferedSelect()
 	 */
-	public function unbufferedSelect($query, array $tableIdMap, $cluster = 'default', $deepLookup = false) {
-		return new UnbufferedRecordset($this->basicSelect($query, $tableIdMap, $cluster, $deepLookup));		
+	public function unbufferedSelect(Select $query, array $ids, $cluster = 'default', $deepLookup = false) {
+		return new UnbufferedRecordset($this->basicSelect($query, $ids, $cluster, $deepLookup));		
 	}
 	
-	/**
-	 * 
-	 * @param CommonResult $result
-	 * @return Recordset
-	 */
-	public function getRecordset(CommonResult $result) {
+	public function getRecordset(CommonResult $result, array $ids) {
+		$ids = array_flip($ids);
 		$output = new Recordset();
-		$fields = $result->fields();
-		
-		$result->fetchMode($result::FETCH_NUM);
+		$result->fetchMode($result::FETCH_ASSOC);
+		$index = 0;
 		while($row = $result->fetch()) {
-			$tmp = array();
-			foreach($row as $key => $val) {
-				$tmp[$fields[$key]->identifier()] = $val;
-			}
-			$output[] = $tmp;
+			$output[$index] = $row;
+			$output->idRecordMap[implode('.', array_intersect_key($row, $ids))] = $index;
+			$index++;
 		}
 		return $output;
 	}
-	
+		
 	/**
 	 * (non-PHPdoc)
 	 * @see yami\ORM.Backend::get()
@@ -337,8 +355,6 @@ class Db extends Backend {
 		foreach($ids as $id) {
 			$idVals[$id] = $subject[$id];
 		}
-//		error_log(print_r($idVals, true));
-//		error_log(print_r($ids, true));
 		$subject = $subject::make($this->get($idVals, $table, $ids, $cluster));
 		return $subject;
 	}

@@ -1,5 +1,7 @@
 <?php
 namespace yami\ORM\Backend;
+use yami\ORM\Backend;
+
 use yami\Misc\Singleton;
 
 class Manager extends Singleton {
@@ -37,7 +39,8 @@ class Manager extends Singleton {
 	/**
 	 * Return a Backend
 	 * @param string $name
-	 * @throws \Exception
+	 * @return yami\ORM\Backend
+	 * @throws \Exception 
 	 */
 	public function get($name = 'default') {
 		if(!isset(static::$backends[$name])) {

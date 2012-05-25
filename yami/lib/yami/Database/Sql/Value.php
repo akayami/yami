@@ -20,7 +20,7 @@ class Value extends Expression {
 	}
 	
 	public function __toString() {
-		return $this->value;
+		return (String)$this->value;
 	}
 	
 }

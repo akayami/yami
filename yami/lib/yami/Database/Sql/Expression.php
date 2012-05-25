@@ -60,11 +60,13 @@ class Expression {
 		return $this;
 	}	
 	
-	public function quote($value) {
+	public function quote($value) {			
 		if($value instanceof Field) {
 			return $value;
-		}elseif($value instanceof Expression) {
-			return "(".$value.")";
+		} elseif($value instanceof Expression) {
+			return $value;
+		}elseif($value instanceof Select) {
+			return '('.$value.')';
 		} else {
 			$value = $this->trimValue($value);
 			if(isset($this->reference)) {

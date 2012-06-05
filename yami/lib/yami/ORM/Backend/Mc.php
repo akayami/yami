@@ -85,7 +85,7 @@ class Mc extends Backend {
 				if($this->handle->getResultCode() != \Memcached::RES_SUCCESS) {
 					error_log('Failed to add '.$hash);
 				}
-				foreach($query->getTableNamesList() as $table) {
+				foreach($tables as $table) {
 					$this->addRelatedSets($table, $hash);
 				}
 				return $res;
@@ -278,7 +278,11 @@ class Mc extends Backend {
 	}
 	
 	protected function getSelectKey($query) {
-		return $query->hash();
+		if(is_object($query)) {
+			return $query->hash();
+		} else {
+			return hash('md5', $query);
+		}
 	}
 		
 	public function get($key, $table, $ids, $cluster, $deepLookup = false) {

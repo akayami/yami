@@ -19,7 +19,7 @@ abstract class Abstr {
 	/**
 	 * @return boolean
 	 */
-	public function handle() {
+	public function handle() {		
 		$a = new $this->controller($this->action);
 		if($a->{$this->action}() !== false) {
 			$a->render();

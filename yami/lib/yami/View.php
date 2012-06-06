@@ -13,14 +13,9 @@ class View extends ArrayObject {
 	
 	
 	public function render() {
-// 		set_error_handler(function($errno, $errstr, $errfile, $errline) {
-// 			error_log('-'.$errno.'-'.$errstr);
-// 			throw new \ErrorException($errstr, 0, $errno, $errfile, $errline);
-// 		});
 		if(!@include($this->action.'.phtml')) {
 			throw new \Exception('Missing view:'.$this->action.'.phtml');
 		}
-//		restore_error_handler();
 	}
 	
 	public function setActionName($string) {
@@ -35,14 +30,9 @@ class View extends ArrayObject {
 	 */
 	public function inject($path, array $data = null) {
 		if(is_null($data)) {
-// 			set_error_handler(function($errno, $errstr, $errfile, $errline) {
-// 				error_log('-'.$errno.'-'.$errstr);
-// 				throw new \ErrorException($errstr, 0, $errno, $errfile, $errline);
-// 			});
 			if(!@include($path.'.phtml')) {
 				throw new \Exception('Failed to include: '.$path.'.phtml');	
 			}
-//			restore_error_handler();
 		} else {
 			$v = new View($data);
 			$v->setActionName($path);

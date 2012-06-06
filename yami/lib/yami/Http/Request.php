@@ -109,7 +109,7 @@ class Request extends ArrayObject {
 	 * @param boolean $overwriteURI
 	 * @throws Exception
 	 */
-	public function set($key, $value, $source = null, $allowURI = false) {
+	public function set($key, $value, $source = null, $overwriteURIBlock = false) {
 		switch($source) {
 			case 'uri':
 				if(!$overwriteURIBlock) {

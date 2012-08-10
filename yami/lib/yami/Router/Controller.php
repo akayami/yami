@@ -40,7 +40,8 @@ class Controller extends Singleton {
 					try {
 						Request::getInstance()->setURI($route->getParams());	// Reading extracted parameters
 						$this->route = $route;
-						return $route->handle();						
+						$this->handleRoute($this->route);
+						return true;						
 					} catch(\Exception $e) {
 						throw new \Exception('Internal System Error: '.$request.' '.$e->getMessage(), 500, $e);						
 					}
@@ -48,6 +49,22 @@ class Controller extends Singleton {
 			}
 		}
 		throw new \Exception('Requested resource not found: '.$request, 404);
+	}	
+	
+	/**
+	 * 
+	 * @param Route $route
+	 * @throws Exception
+	 */
+	protected function handleRoute(Route $route) {
+		$cName = $route->getController();
+		$a = new $cName($route->getAction());
+		try {
+			$a->{$route->getAction()}();
+			$a->render();
+		} catch(\Exception $e) {
+			throw $e;
+		}
 	}
 	
 	/**

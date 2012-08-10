@@ -18,9 +18,6 @@ interface Route {
 	 */
 	public function getParams();
 	
-	
-	public function handle();
-	
 	public function getController();
 	
 	public function getAction();

@@ -11,6 +11,17 @@ class View extends ArrayObject {
  		$this->__data = $data;
  	}
 	
+ 	public function get($key, $default = null) {
+ 		try {
+ 			return parent::offsetGet($key);
+ 		} catch(\Exception $e) {
+ 			if(!is_null($default)) {
+ 				return $default;
+ 			} else {
+ 				throw $e;
+ 			}
+ 		}
+ 	}
 	
 	public function render() {
 		if(!@include($this->action.'.phtml')) {
@@ -34,7 +45,7 @@ class View extends ArrayObject {
 				throw new \Exception('Failed to include: '.$path.'.phtml');	
 			}
 		} else {
-			$v = new View($data);
+			$v = new Static($data);
 			$v->setActionName($path);
 			$v->render();
 		}

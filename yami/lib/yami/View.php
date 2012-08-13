@@ -24,7 +24,7 @@ class View extends ArrayObject {
  	}
 	
 	public function render() {
-		if(!@include($this->action.'.phtml')) {
+		if(!include($this->action.'.phtml')) {
 			throw new \Exception('Missing view:'.$this->action.'.phtml');
 		}
 	}
@@ -41,7 +41,7 @@ class View extends ArrayObject {
 	 */
 	public function inject($path, array $data = null) {
 		if(is_null($data)) {
-			if(!@include($path.'.phtml')) {
+			if(!include($path.'.phtml')) {
 				throw new \Exception('Failed to include: '.$path.'.phtml');	
 			}
 		} else {

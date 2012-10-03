@@ -24,9 +24,17 @@ class View extends ArrayObject {
  	}
 	
 	public function render() {
+// 		set_error_handler(function ($errno, $errstr, $errfile, $errline) {
+// 			error_log($errstr);
+// 			throw new \ErrorException($errstr, $errno, 0, $errfile, $errline);
+// 		});
+		ob_start();
 		if(!include($this->action.'.phtml')) {
 			throw new \Exception('Missing view:'.$this->action.'.phtml');
 		}
+		$out = ob_get_contents();
+		ob_end_clean();
+		echo $out;
 	}
 	
 	public function setActionName($string) {

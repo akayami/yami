@@ -32,7 +32,7 @@ class Controller extends Singleton {
 	 * 
 	 * @param string $request
 	 */
-	public function route($request) {
+	public function route($request) {		
 		ksort($this->routes);
 		foreach($this->routes as $routeBlock) {
 			foreach($routeBlock as /* @var $route Route */ $route) {
@@ -43,7 +43,10 @@ class Controller extends Singleton {
 						$this->handleRoute($this->route);
 						return true;						
 					} catch(\Exception $e) {
-						throw new \Exception('Internal System Error: '.$request.' '.$e->getMessage(), 500, $e);						
+						throw $e;
+// 						if($e->getCode() != 404) {
+// 							throw new \Exception('Internal System Error: '.$request.' '.$e->getMessage(), 500, $e);
+// 						}						
 					}
 				}
 			}

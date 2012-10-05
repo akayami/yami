@@ -4,23 +4,33 @@ use yami\Database\Sql\Expression;
 
 class Select extends Expression {
 
-	protected $fields = array();
-	protected $tables = array();
-	protected $where;
-	protected $group;	
-	protected $having;
-	protected $order;
-	protected $limit;
-	protected $union;
+	protected $parsed = array('fields' => array(), 'tables' => array(), 'options' => array());
+	
+//	protected $fields = array();
+//	protected $tables = array();
+//	protected $where;
+//	protected $group;	
+//	protected $having;
+//	protected $order;
+//	protected $limit;
+//	protected $union;
 	protected $unionKeywords = array('UNION', 'UNION ALL', 'UNION DISTINCT');
 	protected $unionToken;
-	protected $options = array();
 	public $structure;
+	protected $cache = true;
+	protected $cacheTTL = 86400;
 	
-	public function __construct($query = null) {
+	public function __construct($query = null, $cache = null, $cacheTLL = null) {
+		
+		if($cache != null) {
+			$this->cache = ($cache ? true : false);
+		}
+		if(is_int($cacheTLL)) {
+			$this->cacheTTL = $cacheTLL;
+		}
+		
 		if(!is_null($query)) {
 			if(is_array($query)) {
-//				print_r($query);
 				$this->parseStructure($query);
 			} elseif (is_string($query)) {
 				$this->parseString($query);
@@ -30,7 +40,7 @@ class Select extends Expression {
 	
 	public function getTableNamesList() {
 		$out = array();
-		foreach($this->tables as /* @var Table */ $table) {
+		foreach($this->parsed['tables'] as /* @var Table */ $table) {
 			$out[] = $table->getTablename();
 		}
 		return $out;
@@ -42,7 +52,7 @@ class Select extends Expression {
 	 * @return \yami\Database\Sql\Select
 	 */
 	public function addQueryOption($option) {
-		$this->options[] = $option;
+		$this->parsed['options'][] = $option;
 		return $this;
 	}
 	
@@ -52,7 +62,7 @@ class Select extends Expression {
 	 * @return \yami\Database\Sql\Select
 	 */
 	public function addOrder(Expression $order) {
-		$this->order[] = $order;
+		$this->parsed['order'][] = $order;
 		return $this;
 	}
 	
@@ -71,7 +81,7 @@ class Select extends Expression {
 	 * @return ConditionBlock
 	 */
 	public function getHaving() {
-		return (!($this->having instanceof ConditionBlock) ? $this->having = new ConditionBlock() : $this->having);
+		return (!($this->parsed['having'] instanceof ConditionBlock) ? $this->parsed['having'] = new ConditionBlock() : $this->parsed['having']);
 	}
 	
 	/**
@@ -86,7 +96,7 @@ class Select extends Expression {
 	
 	
 	public function addAggregate(Aggregate $aggregateField) {
-		$this->group[] = $aggregateField;
+		$this->parsed['group'][] = $aggregateField;
 	}
 	
 	/**
@@ -95,7 +105,7 @@ class Select extends Expression {
 	 * @return \yami\Database\Sql\Select
 	 */
 	public function addLimit(Limit $limit) {
-		$this->limit = $limit;
+		$this->parsed['limit'] = $limit;
 		return $this;
 	}
 	
@@ -121,21 +131,45 @@ class Select extends Expression {
 	}
 	
 	public function hasLimit() {
-		return isset($this->limit);
+		return isset($this->parsed['limit']);
 	}
 	
 	public function getLimitValue() {
-		return $this->limit->rowcount();
+		return $this->parsed['limit']->rowcount();
 	}
 	
 	public function getOffsetValue() {
-		return $this->limit->offset();
+		return $this->parsed['limit']->offset();
 	}
 	
 	protected function parseString($string) {
-		$this->structure = new \PHPSQLParser($string);
+		$key = md5($string);
+		if(apc_exists($key) && $this->cache) {
+			$ok = false;
+			$s = apc_fetch($key, $ok);
+			if($ok) {
+				$this->structure = $s;				
+			}
+		} else {
+			$this->structure = new \PHPSQLParser($string);
+			if($this->cache) {
+				apc_store($key, $this->structure, $this->cacheTTL);
+			}
+		}		
 		if($this->structure->parsed) {
-			$this->parseStructure($this->structure->parsed);
+			$key = md5('parsed_'.$string);
+			if(apc_exists($key) && $this->cache) {
+				$ok = false;
+				$s = apc_fetch($key, $ok);
+				if($ok) {
+					$this->parsed = $s;
+				}				
+			} else {
+				$this->parseStructure($this->structure->parsed);
+				if($this->cache) {
+					apc_store($key, $this->parsed, $this->cacheTTL);
+				}
+			}
 		}		
 	}
 	
@@ -169,7 +203,7 @@ class Select extends Expression {
 	 * @return \yami\Database\Sql\ConditionBlock
 	 */
 	public function getWhere() {
-		return (!($this->where instanceof ConditionBlock) ? $this->where = new ConditionBlock() : $this->where);
+		return (!($this->parsed['where'] instanceof ConditionBlock) ? $this->parsed['where'] = new ConditionBlock() : $this->parsed['where']);
 	}
 	
 	/**
@@ -239,7 +273,7 @@ class Select extends Expression {
 	 * @return \yami\Database\Sql\Select
 	 */
 	public function addTable(Table $table) {
-		$this->tables[] = $table;
+		$this->parsed['tables'][] = $table;
 		return $this;		
 	}
 	
@@ -253,7 +287,7 @@ class Select extends Expression {
 		if(($field instanceof Expression) === false) {
 			throw new \Exception('Unsupported field format');
 		}
-		$this->fields[] = $field;
+		$this->parsed['fields'][] = $field;
 		return $this;
 	}
 	
@@ -263,7 +297,7 @@ class Select extends Expression {
 				if(in_array($key, $this->unionKeywords)) {
 					$this->unionToken = $key;
 					foreach($value as $stmt) {
-						$this->union[] = new Select($stmt);
+						$this->parsed['union'][] = new Select($stmt);
 					}
 				} else {
 					throw new \Exception('Unparsable structure');
@@ -273,7 +307,7 @@ class Select extends Expression {
 		}
 		if(isset($struc['OPTIONS'])) {
 			foreach($struc['OPTIONS'] as $option) {
-				$this->options[] = $option;
+				$this->parsed['options'][] = $option;
 			}
 		}
 		if(isset($struc['SELECT'] )) {
@@ -292,20 +326,20 @@ class Select extends Expression {
 		}
 		if(isset($struc['GROUP'])) {
 			foreach($struc['GROUP'] as $group) {
-				$this->group[] = Aggregate::fromStructure($group);
+				$this->parsed['group'][] = Aggregate::fromStructure($group);
 			}
 		}
 		if(isset($struc['HAVING'])) {
-			$this->having = ConditionBlock::fromStructure($struc['HAVING']);
+			$this->parsed['having'] = ConditionBlock::fromStructure($struc['HAVING']);
 		}
 		
 		if(isset($struc['ORDER'])) {
 			foreach($struc['ORDER'] as $group) {
-				$this->order[] = Order::fromStructure($group);//new Order($group);
+				$this->parsed['order'][] = Order::fromStructure($group);//new Order($group);
 			}
 		}
 		if(isset($struc['LIMIT'])) {
-			$this->limit = new Limit((isset($struc['LIMIT']['rowcount']) ? $struc['LIMIT']['rowcount'] : null), (isset($struc['LIMIT']['offset']) ? $struc['LIMIT']['offset'] : null));			
+			$this->parsed['limit'] = new Limit((isset($struc['LIMIT']['rowcount']) ? $struc['LIMIT']['rowcount'] : null), (isset($struc['LIMIT']['offset']) ? $struc['LIMIT']['offset'] : null));			
 		}
 		return $this;
 	}
@@ -328,41 +362,41 @@ class Select extends Expression {
 	}
 	
 	protected function buildUnion() {
-		return implode(' '.$this->unionToken.' ', $this->union);
+		return implode(' '.$this->unionToken.' ', $this->parsed['union']);
 	}
 	
 	public function get($skipLimit = false, $skipOrder = false) {
-		if(is_array($this->union)) {
+		if(isset($this->parsed['union']) && is_array($this->parsed['union'])) {
 			return $this->buildUnion();
 		}
-		//echo (count($this->fields));
-		if(count($this->fields) == 0) {
-			$this->fields[] = new Field('*');
+		//echo (count($this->parsed['fields']));
+		if(count($this->parsed['fields']) == 0) {
+			$this->parsed['fields'][] = new Field('*');
 		}
-		$output = "SELECT ".implode(',', $this->options).' '.implode(', ', $this->fields);
-		//print_r($this->tables);exit;
-		for($i = 0; $i < count($this->tables); $i++) {
-			$table = $this->tables[$i];
+		$output = "SELECT ".implode(',', $this->parsed['options']).' '.implode(', ', $this->parsed['fields']);
+		//print_r($this->parsed['tables']);exit;
+		for($i = 0; $i < count($this->parsed['tables']); $i++) {
+			$table = $this->parsed['tables'][$i];
 			if($i ==0) {
 				$table->isFirst(true);
 				$output .= ' FROM';
 			}
 			$output .= ' '.$table;
 		}
-		if(isset($this->where)) {
-			$output .= ' WHERE '.$this->where;
+		if(isset($this->parsed['where'])) {
+			$output .= ' WHERE '.$this->parsed['where'];
 		}
-		if(is_array($this->group)) {
-			$output .= ' GROUP BY '.implode(', ', $this->group);
+		if(isset($this->parsed['group']) && is_array($this->parsed['group'])) {
+			$output .= ' GROUP BY '.implode(', ', $this->parsed['group']);
 		}
-		if(isset($this->having)) {
-			$output .= ' HAVING '.$this->having;
+		if(isset($this->parsed['having'])) {
+			$output .= ' HAVING '.$this->parsed['having'];
 		}
-		if(isset($this->order) && !$skipOrder) {
-			$output .= ' ORDER BY '.implode(', ', $this->order);
+		if(isset($this->parsed['order']) && !$skipOrder) {
+			$output .= ' ORDER BY '.implode(', ', $this->parsed['order']);
 		}
-		if(isset($this->limit) && !$skipLimit) {
-			$output .= $this->limit;
+		if(isset($this->parsed['limit']) && !$skipLimit) {
+			$output .= $this->parsed['limit'];
 		}
 		return $output;		
 	}
@@ -376,7 +410,7 @@ class Select extends Expression {
 	 * @return \yami\Database\Sql\Select
 	 */
 	public function unsetTable() {
-		$this->tables = array();
+		$this->parsed['tables'] = array();
 		return $this;
 	}
 	
@@ -385,7 +419,7 @@ class Select extends Expression {
 	 * @return $this;
 	 */
 	public function unsetLimit() {
-		$this->limit = null;
+		$this->parsed['limit'] = null;
 		return $this;
 	}
 
@@ -394,7 +428,7 @@ class Select extends Expression {
 	 * @return \yami\Database\Sql\Select
 	 */
 	public function unsetWhere() {
-		$this->where = null;
+		$this->parsed['where'] = null;
 		return $this;
 	}
 	
@@ -403,7 +437,7 @@ class Select extends Expression {
 	 * @return \yami\Database\Sql\Select
 	 */
 	public function unsetGroup() {
-		$this->group  = null;
+		$this->parsed['group']  = null;
 		return $this;
 	}
 	
@@ -412,7 +446,7 @@ class Select extends Expression {
 	 * @return \yami\Database\Sql\Select
 	 */
 	public function unsetHaving() {
-		$this->having  = null;
+		$this->parsed['having']  = null;
 		return $this;
 	}
 	
@@ -421,12 +455,12 @@ class Select extends Expression {
 	 * @return \yami\Database\Sql\Select
 	 */
 	public function unsetOrder() {
-		$this->order  = null;
+		$this->parsed['order']  = null;
 		return $this;
 	}
 	
 	public function unsetQueryOption() {
-		$this->options = null;
+		$this->parsed['options'] = null;
 		return $this;
 	}
 	

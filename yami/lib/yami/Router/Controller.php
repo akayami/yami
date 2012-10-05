@@ -60,13 +60,19 @@ class Controller extends Singleton {
 	 * @throws Exception
 	 */
 	protected function handleRoute(Route $route) {
-		$cName = $route->getController();
-		$a = new $cName($route->getAction());
+ 		$previous = set_error_handler(function($errno, $errstr, $errfile, $errline) {
+ 			throw new \ErrorException($errstr, 0, $errno, $errfile, $errline);			
+ 		});
 		try {
+			$cName = $route->getController();
+			$a = new $cName($route->getAction());
 			$a->{$route->getAction()}();
 			$a->render();
 		} catch(\Exception $e) {
 			throw $e;
+		}
+		if($previous != null) {
+			set_error_handler($previous);
 		}
 	}
 	

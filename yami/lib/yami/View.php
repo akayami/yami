@@ -12,22 +12,16 @@ class View extends ArrayObject {
  	}
 	
  	public function get($key, $default = null) {
- 		try {
+ 		if(parent::offsetExists($key)) {
  			return parent::offsetGet($key);
- 		} catch(\Exception $e) {
- 			if(!is_null($default)) {
- 				return $default;
- 			} else {
- 				throw $e;
- 			}
- 		}
+ 		} elseif(!is_null($default)) {
+ 			return $default;
+ 		} else {
+ 			throw new \ErrorException('Undefined index: '.$key);
+ 		} 	
  	}
 	
 	public function render() {
-// 		set_error_handler(function ($errno, $errstr, $errfile, $errline) {
-// 			error_log($errstr);
-// 			throw new \ErrorException($errstr, $errno, 0, $errfile, $errline);
-// 		});
 		ob_start();
 		if(!include($this->action.'.phtml')) {
 			throw new \Exception('Missing view:'.$this->action.'.phtml');

@@ -79,20 +79,44 @@ interface Adapter {
 	 * @return boolean
 	 */
 	public function isMaster();
-	
+
 	/**
-	 * 
+	 *
 	 * @param string $value 	// Quote a value like a string
 	 * @param boolena $escape	// Also escape the value
 	 * @return $string
 	 */
 	public function quote($value, $escape = true);
-	
+
 	/**
-	 * 
+	 *
 	 * @param string $value
 	 * @return $string
 	 */
 	public function escape($value);
+
+	/**
+	 *
+	 * @param string $table
+	 * @param array $records
+	 * @param array $filter
+	 */
+	public function insert($table, array $data = array(), array $filter = array());
+
+	/**
+	 *
+	 * @param string $table
+	 * @param array $where
+	 * @param array $records
+	 * @param array $filter
+	 */
+	public function update($table, array $where, array $data = array(), array $filter = array());
+
+	/**
+	 *
+	 * @param string $table
+	 * @param array $where
+	 */
+	public function delete($table, array $where);
 
 }

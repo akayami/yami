@@ -22,6 +22,13 @@ class Mysqli extends Abstr {
 
 	}
 
+
+	/**
+	 *
+	 * @param string $key
+	 * @throws \Exception
+	 * @return \yami\Database\Adapter\mysqli
+	 */
 	public function __get($key) {
 		switch($key) {
 			case 'handle':
@@ -32,6 +39,7 @@ class Mysqli extends Abstr {
 						throw new \Exception($this->__handle->connect_error, $this->__handle->connect_errno);
 					}
 				}
+				$this->handle = $this->__handle;
 				return $this->__handle;
 				break;
 		}
@@ -74,8 +82,8 @@ class Mysqli extends Abstr {
 	public function escape($string) {
 		return $this->handle->real_escape_string($string);
 	}
-	
-	
+
+
 	/**
 	 * (non-PHPdoc)
 	 * @see yami\Database.Adapter::quote()

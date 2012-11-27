@@ -1,6 +1,8 @@
 <?php
 namespace yami\Database\Adapter;
 
+use yami\Database\Adapter\Exception\Duplicate;
+
 use yami\Database\Adapter\Mysqli\Result;
 
 class Mysqli extends Abstr {
@@ -54,7 +56,14 @@ class Mysqli extends Abstr {
 		$res = $this->handle->query($query);
 		if(is_bool($res)) {
 			if($res === false) {
-				throw new \Exception($this->handle->error.":".$query);
+				switch($this->handle->errno) {
+					case 1062:
+						throw new Duplicate($this->handle->error.":".$query, $this->handle->errno);
+						break;
+					default:
+						throw new \Exception($this->handle->error.":".$query, $this->handle->errno);
+						break;
+				}
 			}
 			return $res;
 		}

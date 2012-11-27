@@ -118,5 +118,4 @@ interface Adapter {
 	 * @param array $where
 	 */
 	public function delete($table, array $where);
-
 }

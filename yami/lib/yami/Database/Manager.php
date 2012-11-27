@@ -9,8 +9,12 @@ class Manager {
 
 	private function __construct() {
 		if(!isset(static::$config)) {			// Lazy self-provisioning.
-			global $config;
-			static::setConfig($config['db']);
+			if(class_exists('\Bacon\Config', true)) {
+				static::setConfig(\Bacon\Config::getInstance()['db']);
+			} else {
+				global $config;
+				static::setConfig($config['db']);
+			}
 		}
 	}
 

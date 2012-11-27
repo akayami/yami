@@ -20,8 +20,9 @@ abstract class Abstr implements Adapter {
 			$ph_type = $match[1][0];
 			$ph_name = $match[2][0];
 
-			if (! array_key_exists($ph_name, $phs))
-				throw new \Exception("query contains placeholder '${ph_name}', but a value was not passed");
+			if (! array_key_exists($ph_name, $phs)) {
+				throw new \Exception("query contains placeholder '{$ph_name}', but a value was not passed");
+			}
 
 			$ph_vals = array();
 			foreach (($phs[$ph_name] !== null ? (array)$phs[$ph_name] : array(null)) as $ph_val) {
@@ -30,8 +31,9 @@ abstract class Abstr implements Adapter {
 					continue;
 				}
 
-				if (! is_string($ph_val) && ! is_int($ph_val) && ! is_float($ph_val))
-					throw new \Exception("value for placeholder '${ph_name}' must be of type '${ph_type}', got type '" . gettype($ph_val) . "'");
+				if (! is_string($ph_val) && ! is_int($ph_val) && ! is_float($ph_val)) {
+					throw new \Exception("value for placeholder '{$ph_name}' must be of type '{$ph_type}', got type '" . gettype($ph_val) . "'");
+				}
 
 				switch ($ph_type) {
 					case 'str':
@@ -39,107 +41,112 @@ abstract class Abstr implements Adapter {
 						break;
 
 					case 'int':
-						if (! preg_match('/^\d++\z/', $ph_val))
-							throw new \Exception("value for placeholder '${ph_name}' must be of type 'int', got type '" . gettype($ph_val) . "'");
+						if (! preg_match('/^\d++\z/', $ph_val)) {
+							throw new \Exception("value for placeholder '{$ph_name}' must be of type 'int', got type '" . gettype($ph_val) . "'");
+						}
 
 						$ph_vals[] = $ph_val;
 						break;
+					case 'dec':
+						if (! preg_match('/^(?:\d++(?:\.\d*+)?|\.\d++)\z/', $ph_val)) {
+							throw new \Exception("value for placeholder '{$ph_name}' must be of type 'dec', got type '" . gettype($ph_val) . "'");
+						}
 
-	case 'dec':
-		if (! preg_match('/^(?:\d++(?:\.\d*+)?|\.\d++)\z/', $ph_val))
-			throw new \Exception("value for placeholder '${ph_name}' must be of type 'dec', got type '" . gettype($ph_val) . "'");
+						$ph_vals[] = (float)$ph_val;
+						break;
 
-		$ph_vals[] = (float)$ph_val;
-		break;
+					case 'raw':
+						$ph_vals[] = $ph_val;
+						break;
+				}
+			}
 
-case 'raw':
-	$ph_vals[] = $ph_val;
-	break;
-}
-}
-
-$query = substr_replace($query, $replace = join(', ', $ph_vals), $ph_pos, $ph_len);
-$pos = $ph_pos + strlen($replace);
-}
-return $query;
-}
-
-/**
- *
- * Enter description here ...
- * @param string $query
- * @param array $phs
- * @return Result
- */
-public function pquery($query, array $phs = null) {
-	return $this->query($this->pquery_sql($query, $phs));
-}
-
-//	abstract public function quote($string);
-
-abstract public function quoteIdentifier($string);
-
-
-/**
- * (non-PHPdoc)
- * @see yami\Database.Adapter::getType()
-*/
-public function getType() {
-	return $this->__type;
-}
-
-/**
- * (non-PHPdoc)
- * @see yami\Database.Adapter::isMaster()
- */
-public function isMaster() {
-	if($this->__type == 'master') {
-		return true;
-	}
-}
-
-/**
- * (non-PHPdoc)
- * @see \yami\Database\Adapter::insert()
- */
-public function insert($table, array $data = array(), array $filter = array()) {
-	$data = array_diff_key($data, array_flip($filter));
-	$fields = array_keys($data);
-	array_walk($fields, function(&$item, $key) {
-		$item = $this->quoteIdentifier($item);
-	});
-
-	array_walk($data, function(&$item, $key){
-		$item = $this->quote($item);
-	});
-
-	$q = 'INSERT INTO '.$this->quoteIdentifier($table).' ('.implode(',', $fields).') VALUES ('.implode(',', $data).')';
-	return $this->handle->query($q);
-}
-
-/**
- * (non-PHPdoc)
- * @see \yami\Database\Adapter::update()
- */
-public function update($table, array $where, array $data = array(), array $filter = array()) {
-	$data = array_diff_key($data, array_flip($filter));
-	$fields = array_keys($data);
-	$cols = array();
-	foreach($data as $key => $val) {
-		$cols[] = $this->quoteIdentifier($key).'='.$this->quote($val, true);
+			$query = substr_replace($query, $replace = join(', ', $ph_vals), $ph_pos, $ph_len);
+			$pos = $ph_pos + strlen($replace);
+		}
+		return $query;
 	}
 
-	$q = 'UPDATE '.$this->quoteIdentifier($table).' SET '.implode(', ', $cols).' WHERE '.$where[0];
-	return $this->handle->query($this->pquery_sql($q, $where[1]));
-}
+	/**
+	 *
+	 * Enter description here ...
+	 * @param string $query
+	 * @param array $phs
+	 * @return Result
+	 */
+	public function pquery($query, array $phs = null) {
+		return $this->query($this->pquery_sql($query, $phs));
+	}
+
+	//	abstract public function quote($string);
+
+	abstract public function quoteIdentifier($string);
 
 
-/**
- * (non-PHPdoc)
- * @see \yami\Database\Adapter::delete()
- */
-public function delete($table, array $where) {
-	$q = 'DELETE FROM '.$this->quoteIdentifier($table).' WHERE '.$where[0];
-	return $this->handle->query($this->pquery_sql($q, $where[1]));
-}
+	/**
+	 * (non-PHPdoc)
+	 * @see yami\Database.Adapter::getType()
+	*/
+	public function getType() {
+		return $this->__type;
+	}
+
+	/**
+	 * (non-PHPdoc)
+	 * @see yami\Database.Adapter::isMaster()
+	 */
+	public function isMaster() {
+		if($this->__type == 'master') {
+			return true;
+		}
+	}
+
+	/**
+	 * (non-PHPdoc)
+	 * @see \yami\Database\Adapter::insert()
+	 */
+	public function insert($table, array $data = array(), array $filter = array()) {
+		$data = array_diff_key($data, array_flip($filter));
+		$fields = array_keys($data);
+		array_walk($fields,
+		function(&$item, $key) 	{
+			$item = $this->quoteIdentifier($item);
+		}
+		);
+
+		array_walk($data,
+		function(&$item, $key) {
+			$item = $this->quote($item);
+		}
+		);
+
+		$q = 'INSERT INTO '.$this->quoteIdentifier($table).' ('.implode(',', $fields).') VALUES ('.implode(',', $data).')';
+		return $this->query($q);
+	}
+
+	/**
+	 * (non-PHPdoc)
+	 * @see \yami\Database\Adapter::update()
+	 */
+	public function update($table, array $where, array $data = array(), array $filter = array()) {
+		$data = array_diff_key($data, array_flip($filter));
+		$fields = array_keys($data);
+		$cols = array();
+		foreach($data as $key => $val) {
+			$cols[] = $this->quoteIdentifier($key).'='.$this->quote($val, true);
+		}
+
+		$q = 'UPDATE '.$this->quoteIdentifier($table).' SET '.implode(', ', $cols).' WHERE '.$where[0];
+		return $this->query($this->pquery_sql($q, $where[1]));
+	}
+
+
+	/**
+	 * (non-PHPdoc)
+	 * @see \yami\Database\Adapter::delete()
+	 */
+	public function delete($table, array $where) {
+		$q = 'DELETE FROM '.$this->quoteIdentifier($table).' WHERE '.$where[0];
+		return $this->query($this->pquery_sql($q, $where[1]));
+	}
 }

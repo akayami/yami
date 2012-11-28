@@ -1,23 +1,23 @@
 <?php
-namespace yami\Mc;
+namespace yami\Memcached;
 
 class Manager {
 
 	/**
-	 * 
+	 *
 	 * @var Manager
 	 */
 	private static $instance;
 	private static $config;
 	private static $clusters = array();
-	
+
 	private function __construct() {
 		if(!isset(static::$config)) {			// Lazy self-provisioning.
 			global $config;
 			static::setConfig($config['mc']);
 		}
 	}
-	
+
 	public function __clone() {
 		throw new \Exception('Cannot clone a singleton:'.get_called_class());
 	}
@@ -25,11 +25,11 @@ class Manager {
 	public function __wakeup() {
 		throw new \Exception('Unserializing is not allowed for singleton:'.get_called_class());
 	}
-	
+
 	public static function setConfig(array $config) {
 		static::$config = $config;
 	}
-	
+
 	/**
 	 * Enter description here ...
 	 *
@@ -41,7 +41,7 @@ class Manager {
 		}
 		return static::$instance;
 	}
-	
+
 	/**
 	 *
 	 * Enter description here ...
@@ -63,6 +63,6 @@ class Manager {
 		} else {
 			throw new \Exception('MC Cluster '.$cluster.' not defined!');
 		}
-	}	
-	
+	}
+
 }

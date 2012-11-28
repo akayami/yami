@@ -1,9 +1,14 @@
 <?php
-namespace yami\Cache;
+namespace Manwin\Cache;
 
-use yami\Cache;
+use Manwin\Cache;
 
-class MC implements Cache {
+/**
+ * 
+ * @author t_rakowski
+ *
+ */
+class Memcached implements Cache {
 	
 	/**
 	 * 
@@ -15,17 +20,26 @@ class MC implements Cache {
 	protected $refreshEnthropy = 10;
 	protected $useDynamicRefreshEntropy = true;
 	
-	public function __construct(\Memcached $memcached, $TTL = null, $realTTL = null, $refreshEnthropy = null) {
+	public function __construct(\Memcached $memcached, $TTL = null, $realTTL = null, $refreshEnthropy = null, $useDynamicRefreshEntropy = true) {
 		$this->mc = $memcached;
 		if(is_int($TTL)) $this->TTL = $TTL;
 		if(is_int($realTTL)) $this->realTTL = $realTTL;
 		if(is_int($refreshEnthropy)) $this->$refreshEnthropy = $refreshEnthropy;
+		$this->useDynamicRefreshEntropy = ($useDynamicRefreshEntropy ? true : false);
 	}
 	
+	/**
+	 * (non-PHPdoc)
+	 * @see \Manwin\Cache::put()
+	 */
 	public function put($key, $value, $TTL = null, $realTTL = null) {
-		$this->mc->set($key, array('p' => $value, 'ttl' => time() + $this->TTL), $this->realTTL);
+		return $this->mc->set($key, array('p' => $value, 'ttl' => time() + $this->TTL), $this->realTTL);
 	}
 	
+	/**
+	 * (non-PHPdoc)
+	 * @see \Manwin\Cache::get()
+	 */
 	public function get($key, $callback) {
 		$key = md5($key);
 		if(!($val = $this->mc->get($key))) {
@@ -62,6 +76,10 @@ class MC implements Cache {
 		}
 	}
 	
+	/**
+	 * (non-PHPdoc)
+	 * @see \Manwin\Cache::delete()
+	 */
 	public function delete($key) {
 		return $this->mc->delete($key);
 	}

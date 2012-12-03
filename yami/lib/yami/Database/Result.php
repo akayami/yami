@@ -56,4 +56,12 @@ interface Result {
 	 */
 	public function fetchCol($columnName);
 
+
+	/**
+	 * Returns a mapped result. Useful in case of join queries
+	 *
+	 * @return array
+	 */
+	public function fetchMapped();
+
 }
